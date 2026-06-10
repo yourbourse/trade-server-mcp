@@ -78,8 +78,36 @@ test("only YB_PASSWORD set (no YB_LOGIN) throws requiring YB_LOGIN", () => {
 
 test("non-https YB_BASE_URL is rejected", () => {
   assert.throws(
-    () => parseConfig({ YB_BASE_URL: "http://ts.example.com:22236", YB_API_KEY: "k", YB_SECRET_KEY: "s" }),
+    () =>
+      parseConfig({
+        YB_BASE_URL: "http://ts.example.com:22236",
+        YB_API_KEY: "k",
+        YB_SECRET_KEY: "s",
+      }),
     /must use https:\/\//,
+  );
+});
+
+test("non-https YB_BASE_URL is allowed when explicitly enabled for local development", () => {
+  const c = parseConfig({
+    YB_BASE_URL: "http://localhost:22236",
+    YB_ALLOW_INSECURE_BASE_URL: "true",
+    YB_API_KEY: "k",
+    YB_SECRET_KEY: "s",
+  });
+  assert.equal(c.mode, "admin");
+});
+
+test("insecure-mode flag still rejects non-http schemes", () => {
+  assert.throws(
+    () =>
+      parseConfig({
+        YB_BASE_URL: "ws://localhost:22236",
+        YB_ALLOW_INSECURE_BASE_URL: "true",
+        YB_API_KEY: "k",
+        YB_SECRET_KEY: "s",
+      }),
+    /must use http:\/\/ or https:\/\//,
   );
 });
 

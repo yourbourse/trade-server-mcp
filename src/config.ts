@@ -23,14 +23,23 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
 
   const baseUrl = v("YB_BASE_URL");
   if (!baseUrl) throw new Error(`Missing YB_BASE_URL.\n${HELP}`);
+  const allowInsecureBaseUrl = /^(1|true|yes)$/i.test(v("YB_ALLOW_INSECURE_BASE_URL") ?? "");
   let parsedBaseUrl: URL;
   try {
     parsedBaseUrl = new URL(baseUrl);
   } catch {
     throw new Error(`YB_BASE_URL must be a valid URL.\n${HELP}`);
   }
-  if (parsedBaseUrl.protocol !== "https:") {
-    throw new Error(`YB_BASE_URL must use https:// to protect API credentials in transit.\n${HELP}`);
+  if (allowInsecureBaseUrl) {
+    if (parsedBaseUrl.protocol !== "https:" && parsedBaseUrl.protocol !== "http:") {
+      throw new Error(
+        `YB_BASE_URL must use http:// or https:// when YB_ALLOW_INSECURE_BASE_URL is enabled.\n${HELP}`,
+      );
+    }
+  } else if (parsedBaseUrl.protocol !== "https:") {
+    throw new Error(
+      `YB_BASE_URL must use https:// to protect API credentials in transit. Set YB_ALLOW_INSECURE_BASE_URL=true only for local development.\n${HELP}`,
+    );
   }
   if (parsedBaseUrl.username || parsedBaseUrl.password) {
     throw new Error(`YB_BASE_URL must not include username/password credentials.\n${HELP}`);
