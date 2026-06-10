@@ -286,3 +286,4 @@ Copyright (c) 2025-2026 YourBourse. All rights reserved.
 This software is proprietary and confidential. Unauthorized copying, distribution,
 modification, or use of this software, via any medium, is strictly prohibited. See
 [LICENSE](LICENSE) for terms.
+
