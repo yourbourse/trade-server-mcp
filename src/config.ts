@@ -23,6 +23,18 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
 
   const baseUrl = v("YB_BASE_URL");
   if (!baseUrl) throw new Error(`Missing YB_BASE_URL.\n${HELP}`);
+  let parsedBaseUrl: URL;
+  try {
+    parsedBaseUrl = new URL(baseUrl);
+  } catch {
+    throw new Error(`YB_BASE_URL must be a valid URL.\n${HELP}`);
+  }
+  if (parsedBaseUrl.protocol !== "https:") {
+    throw new Error(`YB_BASE_URL must use https:// to protect API credentials in transit.\n${HELP}`);
+  }
+  if (parsedBaseUrl.username || parsedBaseUrl.password) {
+    throw new Error(`YB_BASE_URL must not include username/password credentials.\n${HELP}`);
+  }
 
   const mode_raw = v("YB_MODE");
   const login_raw = v("YB_LOGIN");

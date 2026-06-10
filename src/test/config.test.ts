@@ -75,3 +75,22 @@ test("whitespace-only YB_BASE_URL throws with variable name in message", () => {
 test("only YB_PASSWORD set (no YB_LOGIN) throws requiring YB_LOGIN", () => {
   assert.throws(() => parseConfig({ ...BASE, YB_PASSWORD: "pw" }), /requires YB_LOGIN/);
 });
+
+test("non-https YB_BASE_URL is rejected", () => {
+  assert.throws(
+    () => parseConfig({ YB_BASE_URL: "http://ts.example.com:22236", YB_API_KEY: "k", YB_SECRET_KEY: "s" }),
+    /must use https:\/\//,
+  );
+});
+
+test("YB_BASE_URL with embedded credentials is rejected", () => {
+  assert.throws(
+    () =>
+      parseConfig({
+        YB_BASE_URL: "https://user@ts.example.com:22236",
+        YB_API_KEY: "k",
+        YB_SECRET_KEY: "s",
+      }),
+    /must not include username\/password/,
+  );
+});
