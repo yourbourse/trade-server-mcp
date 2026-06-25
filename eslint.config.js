@@ -1,7 +1,7 @@
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist/", "node_modules/", "reference/", "scripts/"] },
+  { ignores: ["dist/", "node_modules/", "reference/", "scripts/", "mcpb-build/"] },
   ...tseslint.configs.recommended,
   {
     rules: {

@@ -1,0 +1,24 @@
+# Files excluded from the packed .mcpb bundle (keeps the artifact lean).
+# Runtime needs only compiled JS + production deps; everything below is dev/test/docs cruft.
+
+# Our own compiled tests (tsc emits src/test -> dist/test)
+dist/test/
+
+# Dependency test suites and fixtures
+**/test/
+**/tests/
+**/__tests__/
+**/*.test.js
+**/*.spec.js
+
+# TypeScript declarations and source maps (not used at runtime)
+**/*.d.ts
+**/*.d.cts
+**/*.d.mts
+**/*.map
+**/@types/
+
+# Bundled example apps and docs shipped inside dependencies
+**/examples/
+**/*.md
+**/.github/
