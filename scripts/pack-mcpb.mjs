@@ -42,6 +42,7 @@ cpSync(join(root, "dist"), join(staging, "dist"), { recursive: true });
 rmSync(join(staging, "dist", "test"), { recursive: true, force: true }); // never ship compiled tests
 copyFileSync(join(root, "manifest.json"), join(staging, "manifest.json"));
 copyFileSync(join(root, "icon.png"), join(staging, "icon.png"));
+copyFileSync(join(root, "LICENSE"), join(staging, "LICENSE")); // ship our license with the artifact
 copyFileSync(join(root, ".mcpbignore"), join(staging, ".mcpbignore")); // trim dependency cruft at pack time
 
 // 6. Validate the staged manifest, then pack.

@@ -18,7 +18,13 @@ dist/test/
 **/*.map
 **/@types/
 
-# Bundled example apps and docs shipped inside dependencies
+# Bundled example apps and noisy docs shipped inside dependencies.
+# NOTE: do NOT blanket-ignore *.md — many deps ship their license/notice as LICENSE.md / NOTICE.md,
+# which must be kept for license compliance. Only strip common non-license docs.
 **/examples/
-**/*.md
+**/README.md
+**/readme.md
+**/CHANGELOG.md
+**/CHANGES.md
+**/HISTORY.md
 **/.github/

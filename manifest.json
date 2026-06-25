@@ -24,13 +24,13 @@
     "yb_base_url": {
       "type": "string",
       "title": "Server address",
-      "description": "Your Trade Server's web address, from your broker (e.g. https://your-server.example.com).",
+      "description": "Your Trade Server's full web address, from your broker — include https:// and no trailing slash (e.g. https://your-server.example.com, sometimes with a port like :32236).",
       "required": true
     },
     "yb_login": {
       "type": "string",
       "title": "Account login",
-      "description": "Your trading account login/number.",
+      "description": "Your trading account login — digits only (a positive integer).",
       "required": true
     },
     "yb_password": {
