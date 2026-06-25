@@ -4,6 +4,10 @@
 # Our own compiled tests (tsc emits src/test -> dist/test)
 dist/test/
 
+# Lockfiles aren't needed at runtime (incl. npm's internal node_modules/.package-lock.json)
+**/.package-lock.json
+**/package-lock.json
+
 # Dependency test suites and fixtures
 **/test/
 **/tests/

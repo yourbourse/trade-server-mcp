@@ -36,6 +36,7 @@ mkdirSync(staging, { recursive: true });
 copyFileSync(join(root, "package.json"), join(staging, "package.json"));
 copyFileSync(join(root, "package-lock.json"), join(staging, "package-lock.json"));
 run("npm ci --omit=dev --ignore-scripts", staging);
+rmSync(join(staging, "package-lock.json"), { force: true }); // only needed for the install; keep it out of the bundle
 
 // 5. Copy the bundle payload.
 cpSync(join(root, "dist"), join(staging, "dist"), { recursive: true });
@@ -46,7 +47,7 @@ copyFileSync(join(root, "LICENSE"), join(staging, "LICENSE")); // ship our licen
 copyFileSync(join(root, ".mcpbignore"), join(staging, ".mcpbignore")); // trim dependency cruft at pack time
 
 // 6. Validate the staged manifest, then pack.
-run(`npx --yes @anthropic-ai/mcpb validate "${join(staging, "manifest.json")}"`);
-run(`npx --yes @anthropic-ai/mcpb pack "${staging}" "${out}"`);
+run(`npx --yes @anthropic-ai/mcpb@2.1.2 validate "${join(staging, "manifest.json")}"`);
+run(`npx --yes @anthropic-ai/mcpb@2.1.2 pack "${staging}" "${out}"`);
 
 console.log(`\n✓ Built ${out} (${(statSync(out).size / 1024 / 1024).toFixed(1)} MB)`);
