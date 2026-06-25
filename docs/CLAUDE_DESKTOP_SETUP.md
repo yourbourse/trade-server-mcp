@@ -126,7 +126,7 @@ Copy this block:
       "command": "npx",
       "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
-        "YB_BASE_URL": "https://<your-server-host>",
+        "YB_BASE_URL": "<your-server-url>",
         "YB_MODE": "client",
         "YB_LOGIN": "<your-login>",
         "YB_PASSWORD": "<your-password>"
@@ -140,7 +140,7 @@ Then fill in the three placeholders with the details from your broker:
 
 | Placeholder | What to put | Notes |
 |---|---|---|
-| `<your-server-host>` | Your server address | Use it **exactly as your broker gave it**. It may or may not include a port number (e.g. `https://your-server.example.com` *or* `https://your-server.example.com:32236`). |
+| `<your-server-url>` | Your server's full web address | Paste it **exactly as your broker gave it**, including the `https://` (it may or may not include a port — e.g. `https://your-server.example.com` *or* `https://your-server.example.com:32236`). |
 | `<your-login>` | Your account login | Keep the quotes, e.g. `"12345"`. |
 | `<your-password>` | Your password | Keep the quotes. |
 

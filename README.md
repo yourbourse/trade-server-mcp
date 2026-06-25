@@ -45,7 +45,7 @@ Claude in about 10 minutes, with no coding.
       "command": "npx",
       "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
-        "YB_BASE_URL": "https://<your-server-host>",
+        "YB_BASE_URL": "<your-server-url>",
         "YB_MODE": "client",
         "YB_LOGIN": "<your-login>",
         "YB_PASSWORD": "<your-password>"
