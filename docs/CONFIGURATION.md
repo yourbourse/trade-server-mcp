@@ -54,8 +54,9 @@ The examples below use placeholders — replace `<your-server-host>:<port>`, `<a
 `<secret-key>`, `<login>`, `<password>`, and `<broker-company-name>` with your own values.
 
 Requirements: **Node.js 18+** and **git**. On the first launch, npx fetches and builds the latest
-release from GitHub then caches it — subsequent starts are instant, and new releases are picked up
-automatically. Prefer a fixed, reproducible version? See [Pinning a version](#pinning-a-version) below.
+code from the `main` branch then caches it — subsequent starts are instant. Because npx caches by
+spec, you pick up newer commits when the cache refreshes (clear the npx cache to force an update).
+Prefer a fixed, reproducible version? See [Pinning a version](#pinning-a-version) below.
 
 ### Setup 1: Admin mode (broker administrators)
 
@@ -250,17 +251,19 @@ stderr.
 
 ### Pinning a version
 
-By default the install tracks the **latest release** — `github:yourbourse/trade-server-mcp` — so bug
-fixes and improvements arrive automatically. If you need a **reproducible, immutable build** (for
-example a controlled deployment where you decide exactly when to upgrade), pin a specific release tag
+By default the install follows the **`main` branch** — `github:yourbourse/trade-server-mcp` — i.e. the
+latest code, a mutable target. If you need a **reproducible, immutable build** (for example a
+controlled deployment where you decide exactly when to upgrade), pin a specific release **tag**
 instead:
 
 ```json
 "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"]
 ```
 
-A pinned tag never changes underneath you. See [Security](./SECURITY.md) for the supply-chain
-rationale behind distributing from GitHub rather than the npm registry.
+A tag is stable in practice, but tags can technically be re-pointed; for a guarantee that the code can
+never change, pin a **commit SHA** instead (`github:yourbourse/trade-server-mcp#<commit-sha>`). See
+[Security](./SECURITY.md) for the supply-chain rationale behind distributing from GitHub rather than
+the npm registry.
 
 ## Startup error messages
 

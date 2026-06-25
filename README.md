@@ -84,8 +84,9 @@ New to MCP and on Claude Desktop? Use the **5-step setup above**, or the full
 for every client.
 
 **No-clone install (recommended).** Node.js 18+ and git are all you need — your MCP client fetches,
-builds, and runs the server straight from this repository. It tracks the **latest release by
-default**, so bug fixes and improvements arrive automatically. Point your client's `command`/`args`
+builds, and runs the server straight from this repository. It tracks the **latest version on the
+`main` branch** (a moving target, not a fixed release), so fixes and improvements reach you without
+editing your config — npx refreshes its cached copy over time. Point your client's `command`/`args`
 at `npx -y github:yourbourse/trade-server-mcp`; complete per-client config snippets (Claude Desktop,
 Claude Code, and others), both modes, and every environment variable are in
 [Configuration](docs/CONFIGURATION.md).
@@ -107,8 +108,8 @@ Broker administrators use `YB_MODE=admin` with `YB_API_KEY` / `YB_SECRET_KEY` in
 **Finally, restart your MCP client** so it launches the server — then ask your AI:
 *"What's my account state?"*
 
-> **Pinning a version (advanced).** The install tracks the latest release by default. If you need a
-> reproducible, immutable build, you can pin a specific release tag — see
+> **Pinning a version (advanced).** The default install follows the `main` branch (latest code). If
+> you need a reproducible, immutable build, pin a specific release tag or commit — see
 > [Configuration](docs/CONFIGURATION.md#pinning-a-version) for the syntax.
 
 First time setting up? The [Getting Started guide](docs/GETTING_STARTED.md) walks through everything,
@@ -297,9 +298,9 @@ signing secret for the sign-in request. Credentials live exclusively in your MCP
 configuration and the server's process environment; nothing is ever written to disk, logged,
 or echoed back to the AI. Order-placing requests are never retried on connection errors, so a
 network blip cannot turn into a duplicate fill. The project ships **no npm package by
-design**: distribution is npx straight from GitHub — the latest release by default, or pin a tag
-for a reproducible build — never the npm registry, keeping the supply chain to four pinned runtime
-dependencies. Full details, recommended practices, and the vulnerability reporting
+design**: distribution is npx straight from GitHub — the `main` branch by default, or a pinned tag
+or commit for a reproducible build — never the npm registry, keeping the supply chain to four pinned
+runtime dependencies. Full details, recommended practices, and the vulnerability reporting
 process are in [SECURITY.md](docs/SECURITY.md).
 
 ---

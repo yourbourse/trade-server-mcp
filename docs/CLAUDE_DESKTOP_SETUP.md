@@ -17,8 +17,8 @@ No coding, and **no prior experience with "MCP" required.**
 - A Windows or macOS computer. (These steps show **Windows** with screenshots; macOS is the same
   flow — macOS screenshots are coming soon.)
 
-You'll do five things: install **Node.js**, install **git**, install **Claude Desktop**, paste a
-small configuration, and restart. Let's go.
+You'll work through a few short steps: install **Node.js**, install **git**, install **Claude
+Desktop**, open the config file, paste a small configuration, restart, and check it works. Let's go.
 
 ---
 
@@ -186,8 +186,9 @@ window.
 
 ## Step 7 — Check that it works
 
-> **Important:** your trade-server will **not** show up under the `+` menu → **Connectors** list —
-> that list is only for Claude's built-in connectors. Don't go looking for it there.
+> **Important:** your trade-server won't appear in the **list of built-in connectors** (Airtable,
+> Slack, and the like) under the `+` menu → **Connectors** — that list is only for Claude's hosted
+> connectors. Your local server's tools live under `+` → **Connectors → Tool access** (shown below).
 
 You have two easy ways to confirm it's working:
 
