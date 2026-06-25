@@ -27,6 +27,41 @@ the server. No scripts, no copy-pasting API responses.
 
 ---
 
+## ⚡ New to MCP? Set up Claude Desktop in 5 steps
+
+Never used an MCP server before? This is for you — you'll be talking to your trading account through
+Claude in about 10 minutes, with no coding.
+
+1. **Install the basics** — [Node.js](https://nodejs.org) and [git](https://git-scm.com) (one-time).
+2. **Install [Claude Desktop](https://claude.ai/download).**
+3. **Open the config file** — in Claude Desktop: Settings → Developer → **Edit Config**.
+4. **Paste the block below** into that file and fill in the three details from your broker.
+5. **Fully restart Claude Desktop**, then ask it: *"Run a health check on the trade server."*
+
+```json
+{
+  "mcpServers": {
+    "trade-server": {
+      "command": "npx",
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
+      "env": {
+        "YB_BASE_URL": "https://<your-server-host>",
+        "YB_MODE": "client",
+        "YB_LOGIN": "<your-login>",
+        "YB_PASSWORD": "<your-password>"
+      }
+    }
+  }
+}
+```
+
+👉 **New to all this? Follow the [full click-by-click guide with screenshots](docs/CLAUDE_DESKTOP_SETUP.md).**
+
+> Most people should use the setup above. You only need to clone and build the repository if you're a
+> developer who wants to read or modify the code.
+
+---
+
 ## Highlights
 
 | Feature | Description |
@@ -44,31 +79,18 @@ the server. No scripts, no copy-pasting API responses.
 
 ## Quick Start
 
-**No-clone install (recommended).** Node.js 18+ and git are all you need — your MCP client
-fetches, builds, and runs the server straight from this repository, pinned to a release tag.
-For a trader on Claude Desktop, add to `claude_desktop_config.json`:
+New to MCP and on Claude Desktop? Use the **5-step setup above**, or the full
+[Claude Desktop Setup guide](docs/CLAUDE_DESKTOP_SETUP.md). This section is the condensed reference
+for every client.
 
-```json
-{
-  "mcpServers": {
-    "trade-server": {
-      "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
-      "env": {
-        "YB_BASE_URL": "https://<your-server-host>:<port>",
-        "YB_MODE": "client",
-        "YB_LOGIN": "<login>",
-        "YB_PASSWORD": "<password>"
-      }
-    }
-  }
-}
-```
+**No-clone install (recommended).** Node.js 18+ and git are all you need — your MCP client fetches,
+builds, and runs the server straight from this repository. It tracks the **latest release by
+default**, so bug fixes and improvements arrive automatically. Point your client's `command`/`args`
+at `npx -y github:yourbourse/trade-server-mcp`; complete per-client config snippets (Claude Desktop,
+Claude Code, and others), both modes, and every environment variable are in
+[Configuration](docs/CONFIGURATION.md).
 
-The `#v1.1.1` pin makes the install immutable — see [Security](docs/SECURITY.md) for why we
-distribute from GitHub rather than the npm registry.
-
-**Or clone and build** if you prefer a local checkout:
+**Or clone and build** if you prefer a local checkout you can read and modify:
 
 ```bash
 git clone https://github.com/yourbourse/trade-server-mcp.git
@@ -77,18 +99,20 @@ npm ci
 npm run build
 ```
 
-then use `"command": "node", "args": ["<path-to-repo>/dist/index.js"]` with the same `env`
-block.
+then use `"command": "node", "args": ["<path-to-repo>/dist/index.js"]` with the same `env` block.
 
-Broker administrators use `YB_MODE=admin` with `YB_API_KEY` / `YB_SECRET_KEY` instead. All
-variables, both modes, and snippets for Claude Code and other MCP clients are in
-[Configuration](docs/CONFIGURATION.md).
+Broker administrators use `YB_MODE=admin` with `YB_API_KEY` / `YB_SECRET_KEY` instead — see
+[Admin Mode](docs/ADMIN_MODE.md).
 
 **Finally, restart your MCP client** so it launches the server — then ask your AI:
 *"What's my account state?"*
 
-First time setting up? The [Getting Started guide](docs/GETTING_STARTED.md) walks through
-everything, including which credentials you need and how to verify the first tool call.
+> **Pinning a version (advanced).** The install tracks the latest release by default. If you need a
+> reproducible, immutable build, you can pin a specific release tag — see
+> [Configuration](docs/CONFIGURATION.md#pinning-a-version) for the syntax.
+
+First time setting up? The [Getting Started guide](docs/GETTING_STARTED.md) walks through everything,
+including which credentials you need and how to verify the first tool call.
 
 ---
 
@@ -273,8 +297,9 @@ signing secret for the sign-in request. Credentials live exclusively in your MCP
 configuration and the server's process environment; nothing is ever written to disk, logged,
 or echoed back to the AI. Order-placing requests are never retried on connection errors, so a
 network blip cannot turn into a duplicate fill. The project ships **no npm package by
-design**: distribution is npx from a pinned GitHub release tag, or clone + build — never
-the npm registry — keeping the supply chain to four pinned runtime dependencies. Full details, recommended practices, and the vulnerability reporting
+design**: distribution is npx straight from GitHub — the latest release by default, or pin a tag
+for a reproducible build — never the npm registry, keeping the supply chain to four pinned runtime
+dependencies. Full details, recommended practices, and the vulnerability reporting
 process are in [SECURITY.md](docs/SECURITY.md).
 
 ---

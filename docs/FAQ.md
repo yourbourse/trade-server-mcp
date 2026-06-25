@@ -23,8 +23,9 @@ side by side.
 
 Deliberately. The May 2026 wave of npm supply-chain attacks made "install from the registry"
 a real risk for software that holds trading credentials, so the server is distributed
-straight from this GitHub repository instead: run it with npx pinned to a release tag
-(immutable — there is no registry account to hijack), or clone and build from source.
+straight from this GitHub repository instead: run it with npx (the latest release by default, or
+a pinned tag for a reproducible build — either way there is no registry account to hijack), or
+clone and build from source.
 The reasoning is laid out in [Security → Supply-chain stance](./SECURITY.md#supply-chain-stance).
 
 ## Which Trade Server version do I need?
@@ -103,7 +104,7 @@ unchanged.
 
 Yes. The server speaks standard MCP over **stdio**, so any MCP-compatible client that can
 launch a stdio server works: configure it to run
-`npx -y github:yourbourse/trade-server-mcp#v1.1.1` (or `node <path-to-repo>/dist/index.js`
+`npx -y github:yourbourse/trade-server-mcp` (or `node <path-to-repo>/dist/index.js`
 if you cloned the repo) with the environment variables for your mode. See
 [Configuration → Other MCP clients](./CONFIGURATION.md#other-mcp-clients).
 

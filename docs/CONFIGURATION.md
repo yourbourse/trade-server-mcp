@@ -53,9 +53,9 @@ Two notes worth remembering:
 The examples below use placeholders — replace `<your-server-host>:<port>`, `<api-key>`,
 `<secret-key>`, `<login>`, `<password>`, and `<broker-company-name>` with your own values.
 
-Requirements: **Node.js 18+** and **git**. On the first launch, npx fetches and builds the
-pinned release from GitHub then caches it — subsequent starts are instant. When a newer release
-tag is available, update the `#v1.1.1` pin in your config to that tag.
+Requirements: **Node.js 18+** and **git**. On the first launch, npx fetches and builds the latest
+release from GitHub then caches it — subsequent starts are instant, and new releases are picked up
+automatically. Prefer a fixed, reproducible version? See [Pinning a version](#pinning-a-version) below.
 
 ### Setup 1: Admin mode (broker administrators)
 
@@ -66,7 +66,7 @@ tag is available, update the `#v1.1.1` pin in your config to that tag.
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "admin",
@@ -86,7 +86,7 @@ claude mcp add trade-server \
   --env YB_MODE=admin \
   --env YB_API_KEY=<api-key> \
   --env YB_SECRET_KEY=<secret-key> \
-  -- npx -y github:yourbourse/trade-server-mcp#v1.1.1
+  -- npx -y github:yourbourse/trade-server-mcp
 ```
 
 **Claude Code** — or declare it in your project's `.mcp.json`:
@@ -96,7 +96,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "admin",
@@ -117,7 +117,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "client",
@@ -140,7 +140,7 @@ claude mcp add trade-server \
   --env YB_MODE=client \
   --env YB_LOGIN=<login> \
   --env YB_PASSWORD=<password> \
-  -- npx -y github:yourbourse/trade-server-mcp#v1.1.1
+  -- npx -y github:yourbourse/trade-server-mcp
 ```
 
 **Claude Code** — or declare it in your project's `.mcp.json`:
@@ -150,7 +150,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "client",
@@ -173,7 +173,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "client",
@@ -193,7 +193,7 @@ claude mcp add trade-server \
   --env YB_MODE=client \
   --env YB_API_KEY=<api-key> \
   --env YB_SECRET_KEY=<secret-key> \
-  -- npx -y github:yourbourse/trade-server-mcp#v1.1.1
+  -- npx -y github:yourbourse/trade-server-mcp
 ```
 
 **Claude Code** — or declare it in your project's `.mcp.json`:
@@ -203,7 +203,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "client",
@@ -243,10 +243,24 @@ claude mcp add trade-server \
 ### Other MCP clients
 
 Any MCP-compatible client that supports stdio servers can run the Trade Server MCP. Configure it
-to launch `npx -y github:yourbourse/trade-server-mcp#v1.1.1` over the **stdio** transport, with
+to launch `npx -y github:yourbourse/trade-server-mcp` over the **stdio** transport, with
 the environment variables from whichever setup above matches your situation. There is no HTTP/SSE
 endpoint — the server communicates exclusively over stdin/stdout, and writes its log lines to
 stderr.
+
+### Pinning a version
+
+By default the install tracks the **latest release** — `github:yourbourse/trade-server-mcp` — so bug
+fixes and improvements arrive automatically. If you need a **reproducible, immutable build** (for
+example a controlled deployment where you decide exactly when to upgrade), pin a specific release tag
+instead:
+
+```json
+"args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"]
+```
+
+A pinned tag never changes underneath you. See [Security](./SECURITY.md) for the supply-chain
+rationale behind distributing from GitHub rather than the npm registry.
 
 ## Startup error messages
 

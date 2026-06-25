@@ -4,6 +4,10 @@ Trade Server MCP connects Claude (or any MCP-compatible AI client) to a YourBour
 Server, so you can monitor accounts, pull market data, and trade — by talking to your AI.
 This guide takes you from a fresh machine to your first successful tool call.
 
+> **New to MCP and using Claude Desktop?** The
+> [Claude Desktop Setup guide](./CLAUDE_DESKTOP_SETUP.md) is a foolproof, screenshot-by-screenshot
+> walkthrough made for first-timers. This page is the more general, all-clients reference.
+
 ## Prerequisites
 
 - **Node.js 18 or newer** — check with `node --version`.
@@ -27,9 +31,11 @@ The server is distributed as source from this repository — never via the npm r
 run it:
 
 **Option A — no clone (recommended).** Let your MCP client fetch and run the server directly
-from GitHub, pinned to a release tag. Nothing to download manually; you just use
-`"command": "npx", "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"]` in your MCP
-configuration instead of a local file path. The first launch takes a little longer (npx
+from GitHub. Nothing to download manually; you just use
+`"command": "npx", "args": ["-y", "github:yourbourse/trade-server-mcp"]` in your MCP
+configuration instead of a local file path. It tracks the latest release, so fixes arrive
+automatically (prefer a fixed version? pin a tag — see
+[Configuration](./CONFIGURATION.md#pinning-a-version)). The first launch takes a little longer (npx
 fetches and builds the release once, then caches it). Requires Node.js 18+ and git.
 All full configuration examples in [Configuration](./CONFIGURATION.md) work with either
 option — just swap the `command`/`args` pair.
