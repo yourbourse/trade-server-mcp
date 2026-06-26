@@ -55,7 +55,13 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
   if (mode === "admin") {
     if (!apiKey_raw) throw new Error(`Admin mode requires YB_API_KEY.\n${HELP}`);
     if (!secretKey_raw) throw new Error(`Admin mode requires YB_SECRET_KEY.\n${HELP}`);
-    return { mode: "admin", baseUrl, apiKey: apiKey_raw, secretKey: secretKey_raw, requestTimeoutMs };
+    return {
+      mode: "admin",
+      baseUrl,
+      apiKey: apiKey_raw,
+      secretKey: secretKey_raw,
+      requestTimeoutMs,
+    };
   }
 
   if (mode === "client") {

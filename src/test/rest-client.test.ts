@@ -197,7 +197,8 @@ test("a fired timeout maps to ApiError TIMEOUT / 408", async () => {
   const client = new RestClient("http://ts.local", new StaticCredentials("K", "S"));
   await assert.rejects(
     () => client.get("/now"),
-    (err: unknown) => err instanceof ApiError && err.errorCode === "TIMEOUT" && err.statusCode === 408,
+    (err: unknown) =>
+      err instanceof ApiError && err.errorCode === "TIMEOUT" && err.statusCode === 408,
   );
 });
 

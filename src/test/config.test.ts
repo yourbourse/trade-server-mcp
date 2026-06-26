@@ -94,13 +94,19 @@ test("requestTimeoutMs defaults to 10000 when unset", () => {
 });
 
 test("YB_REQUEST_TIMEOUT_MS custom value is parsed", () => {
-  const c = parseConfig({ ...BASE, YB_API_KEY: "k", YB_SECRET_KEY: "s", YB_REQUEST_TIMEOUT_MS: "3000" });
+  const c = parseConfig({
+    ...BASE,
+    YB_API_KEY: "k",
+    YB_SECRET_KEY: "s",
+    YB_REQUEST_TIMEOUT_MS: "3000",
+  });
   assert.equal(c.requestTimeoutMs, 3000);
 });
 
 test("non-numeric YB_REQUEST_TIMEOUT_MS throws naming the variable", () => {
   assert.throws(
-    () => parseConfig({ ...BASE, YB_API_KEY: "k", YB_SECRET_KEY: "s", YB_REQUEST_TIMEOUT_MS: "abc" }),
+    () =>
+      parseConfig({ ...BASE, YB_API_KEY: "k", YB_SECRET_KEY: "s", YB_REQUEST_TIMEOUT_MS: "abc" }),
     /YB_REQUEST_TIMEOUT_MS/,
   );
 });
