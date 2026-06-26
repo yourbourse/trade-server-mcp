@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Reworded the HTTP 400/404 sign-in hint: it no longer asserts a wrong port as the cause, and instead points to invalid-parameter / stray optional field / wrong endpoint / server-side possibilities.
 
+### Security
+
+- `get_quotes` (client and admin) now caps the `symbols` array at 50 and runs at most 8 upstream lookups concurrently, preventing unbounded fan-out / self-DoS (Issue #8).
+- All REST calls now enforce a request timeout (default 10s, configurable via `YB_REQUEST_TIMEOUT_MS`), reported as a stable `TIMEOUT` error. Timeouts are never auto-retried, preserving duplicate-fill protection on order placements (Issue #8).
+
 ## [1.1.1] - 2026-06-10
 
 ### Security

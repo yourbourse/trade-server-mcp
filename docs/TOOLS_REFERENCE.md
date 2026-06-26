@@ -380,9 +380,11 @@ Example:
 
 > Get current bid/ask quotes for multiple symbols at once. More efficient than calling get_quote in a loop.
 
+Accepts up to **50** symbols per call and runs at most 8 lookups concurrently. Requests with more than 50 symbols are rejected.
+
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `symbols` | string[] (at least 1) | Yes | Array of symbol names, e.g. ['EURUSD', 'GBPUSD'] |
+| `symbols` | string[] (1–50) | Yes | Array of symbol names, e.g. ['EURUSD', 'GBPUSD'] (max 50) |
 
 Example:
 
@@ -1024,9 +1026,11 @@ Example:
 
 > Get live bid/ask quotes for multiple symbols at once in parallel. More efficient than calling get_quote in a loop. Returns array of {symbol, quote} objects.
 
+Accepts up to **50** symbols per call and runs at most 8 lookups concurrently. Requests with more than 50 symbols are rejected.
+
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `symbols` | string[] (at least 1) | Yes | Array of symbol names, e.g. ['EURUSD', 'GBPUSD'] |
+| `symbols` | string[] (1–50) | Yes | Array of symbol names, e.g. ['EURUSD', 'GBPUSD'] (max 50) |
 | `groupId` | number | No | Group ID (default 1) |
 
 Example:

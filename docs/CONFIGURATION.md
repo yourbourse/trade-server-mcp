@@ -21,6 +21,7 @@ unset.
 | `YB_LOGIN` | Client mode with login/password | Yes, in that setup | Your trading account number. Must be a positive integer. |
 | `YB_PASSWORD` | Client mode with login/password | Yes, in that setup | Your trading account password. It is used only as the local signing secret for the sign-in request — it is never sent over the network, logged, or echoed. |
 | `YB_BROKER` | Client mode with login/password | No | Your broker's company name, sent along with the sign-in request. Only needed if your broker tells you to set it (for example, when one server hosts more than one broker). |
+| `YB_REQUEST_TIMEOUT_MS` | All modes | No | Per-request timeout for all REST calls, in milliseconds. Positive integer. Default `10000` (10s). On expiry the call fails with a stable `TIMEOUT` error; timeouts are never auto-retried (so an in-flight order placement is not re-sent). |
 
 ## Mode selection and inference
 
