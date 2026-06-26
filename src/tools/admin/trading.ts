@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { RestClient } from "../../rest-client.js";
 
+// Order placement is non-idempotent: a connection reset does not prove the
+// server never received the order, so a transport-level retry could fill twice.
+const NO_TRANSPORT_RETRY = { retryOnConnectionError: false };
+
 export const placeOrderSchema = z.object({
   accountId: z.number().describe("Trading account ID (login)"),
   symbol: z.string().describe("Symbol name, e.g. EURUSD"),
@@ -39,7 +43,7 @@ export async function placeOrder(client: RestClient, params: z.infer<typeof plac
   if (params.marginCheck !== undefined) body.mc = params.marginCheck;
   if (params.comment !== undefined) body.ct = params.comment;
 
-  return client.post("/admin/orders/edit", body);
+  return client.post("/admin/orders/edit", body, NO_TRANSPORT_RETRY);
 }
 
 export const cancelOrderSchema = z.object({
@@ -130,16 +134,20 @@ export async function closePosition(
   const closeSide = position.S === "buy" ? "sell" : "buy";
   const qty = params.quantity ?? position.q;
 
-  return client.post("/admin/orders/edit", {
-    A: params.accountId,
-    s: position.s,
-    S: closeSide,
-    q: qty,
-    t: "Market",
-    tif: "IOC",
-    pi: params.positionId,
-    mc: false,
-  });
+  return client.post(
+    "/admin/orders/edit",
+    {
+      A: params.accountId,
+      s: position.s,
+      S: closeSide,
+      q: qty,
+      t: "Market",
+      tif: "IOC",
+      pi: params.positionId,
+      mc: false,
+    },
+    NO_TRANSPORT_RETRY,
+  );
 }
 
 export const modifyPositionSltpSchema = z.object({
@@ -313,16 +321,20 @@ export async function closeAllPositions(
   for (const pos of positions) {
     try {
       const closeSide = pos.S === "buy" ? "sell" : "buy";
-      await client.post("/admin/orders/edit", {
-        A: params.accountId,
-        s: pos.s,
-        S: closeSide,
-        q: pos.q,
-        t: "Market",
-        tif: "IOC",
-        pi: pos.id,
-        mc: false,
-      });
+      await client.post(
+        "/admin/orders/edit",
+        {
+          A: params.accountId,
+          s: pos.s,
+          S: closeSide,
+          q: pos.q,
+          t: "Market",
+          tif: "IOC",
+          pi: pos.id,
+          mc: false,
+        },
+        NO_TRANSPORT_RETRY,
+      );
       results.push({
         positionId: pos.id,
         symbol: pos.s,
@@ -381,17 +393,21 @@ export async function closeBy(client: RestClient, params: z.infer<typeof closeBy
   // Use the smaller quantity
   const qty = Math.min(position.q, byPosition.q);
 
-  return client.post("/admin/orders/edit", {
-    A: params.accountId,
-    s: position.s,
-    S: position.S === "buy" ? "sell" : "buy",
-    q: qty,
-    t: "CloseBy",
-    tif: "IOC",
-    pi: params.positionId,
-    pbi: params.positionById,
-    mc: false,
-  });
+  return client.post(
+    "/admin/orders/edit",
+    {
+      A: params.accountId,
+      s: position.s,
+      S: position.S === "buy" ? "sell" : "buy",
+      q: qty,
+      t: "CloseBy",
+      tif: "IOC",
+      pi: params.positionId,
+      pbi: params.positionById,
+      mc: false,
+    },
+    NO_TRANSPORT_RETRY,
+  );
 }
 
 // === FORCE DELETE ===
