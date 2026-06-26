@@ -44,7 +44,35 @@ export class RestClient {
   constructor(
     private baseUrl: string,
     private provider: CredentialsProvider,
+    private timeoutMs: number = 10_000,
   ) {}
+
+  /**
+   * fetch with a per-request deadline. A fired timeout is mapped to a stable
+   * ApiError (errorCode "TIMEOUT", status 408) so it is reported consistently
+   * AND — being an ApiError — is never auto-retried by doSend's transport loop
+   * (a timeout is not proof of non-delivery; retrying could double-fill orders).
+   */
+  private async fetchWithTimeout(
+    method: string,
+    path: string,
+    url: string,
+    init: RequestInit,
+  ): Promise<Response> {
+    try {
+      return await fetch(url, { ...init, signal: AbortSignal.timeout(this.timeoutMs) });
+    } catch (err) {
+      if (err instanceof Error && err.name === "TimeoutError") {
+        throw new ApiError(
+          method,
+          path,
+          408,
+          JSON.stringify({ e: "TIMEOUT", message: `request timed out after ${this.timeoutMs}ms` }),
+        );
+      }
+      throw err;
+    }
+  }
 
   private buildHeaders(method: string, body?: string): Record<string, string> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -93,7 +121,7 @@ export class RestClient {
       headers["If-None-Match"] = etag;
     }
 
-    const res = await fetch(url, { method: "GET", headers });
+    const res = await this.fetchWithTimeout("GET", path, url, { method: "GET", headers });
 
     if (res.status === 304) {
       throw new Error("Not modified (304)");
@@ -137,7 +165,11 @@ export class RestClient {
         // An empty bodyStr means "no body at all": some endpoints (e.g. the
         // client /account/state) reject any payload — even {} — but accept a
         // body-less request signed over the empty string.
-        const res = await fetch(url, { method, headers, body: bodyStr || undefined });
+        const res = await this.fetchWithTimeout(method, path, url, {
+          method,
+          headers,
+          body: bodyStr || undefined,
+        });
 
         if (!res.ok) {
           const text = await res.text();
@@ -179,7 +211,7 @@ export class RestClient {
       headers["If-Match"] = etag;
     }
 
-    const res = await fetch(url, {
+    const res = await this.fetchWithTimeout("DELETE", path, url, {
       method: "DELETE",
       headers,
       body: bodyStr || undefined,

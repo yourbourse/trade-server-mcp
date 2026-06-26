@@ -18,6 +18,7 @@ async function main() {
     const restClient = new RestClient(
       config.baseUrl,
       new StaticCredentials(config.apiKey, config.secretKey),
+      config.requestTimeoutMs,
     );
     const wsClient = new WsClient({
       apiKey: config.apiKey,
@@ -60,7 +61,7 @@ async function main() {
       provider = new StaticCredentials(config.auth.apiKey, config.auth.secretKey);
       console.error("Trade Server MCP: client mode (public API token)");
     }
-    const restClient = new RestClient(config.baseUrl, provider);
+    const restClient = new RestClient(config.baseUrl, provider, config.requestTimeoutMs);
     registerClientTools(server, restClient, clientAuth);
   }
 
