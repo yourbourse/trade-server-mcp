@@ -130,7 +130,7 @@ export class ClientAuth implements CredentialsProvider {
       return "Sign-in to the Trade Server failed: check YB_LOGIN and YB_PASSWORD.";
     }
     if (status === 400 || status === 404) {
-      return "The Trade Server rejected the sign-in request — check that YB_BASE_URL points to the CLIENT (public) API port: it is a different port from the admin API on the same server. If the port is right, the server version may predate the public client API; ask your broker.";
+      return `Sign-in to the Trade Server was rejected (HTTP ${status}). Verify YB_BASE_URL points to the CLIENT (public) API — it can use a different port from the admin API. If the URL is already correct, this is likely server-side: the account may not be enabled for the client API on this server, or the version may predate it — check with your broker.`;
     }
     if (status === null) {
       return "Could not reach the Trade Server: check YB_BASE_URL and network connectivity.";

@@ -166,7 +166,7 @@ test("authFailureHint returns port/server-version hint after a 400 failure", asy
   await assert.rejects(() => auth.authorize());
   assert.equal(
     auth.authFailureHint(),
-    "The Trade Server rejected the sign-in request — check that YB_BASE_URL points to the CLIENT (public) API port: it is a different port from the admin API on the same server. If the port is right, the server version may predate the public client API; ask your broker.",
+    "Sign-in to the Trade Server was rejected (HTTP 400). Verify YB_BASE_URL points to the CLIENT (public) API — it can use a different port from the admin API. If the URL is already correct, this is likely server-side: the account may not be enabled for the client API on this server, or the version may predate it — check with your broker.",
   );
   auth.stop();
 });
