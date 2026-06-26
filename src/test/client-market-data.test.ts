@@ -82,6 +82,12 @@ test("getSymbols filter '(' does not throw and matches literal paren symbol", as
   assert.deepEqual(res, [{ name: "(" }]);
 });
 
+test("getSymbols filter matches the server's real 'n' field (regression: was reading 'name')", async () => {
+  respond = () => ({ symbols: [{ n: "EURUSD" }, { n: "GBPUSD" }, { n: "USDJPY" }] });
+  const res = (await m.getSymbols(client(), { filter: "EUR*" })) as Array<{ n?: string }>;
+  assert.deepEqual(res, [{ n: "EURUSD" }]);
+});
+
 test("getQuotes returns null+error for failed symbol, quote for success", async () => {
   globalThis.fetch = (async (url: any, init: any) => {
     captured.push({ url: String(url), method: init?.method ?? "GET", body: init?.body });

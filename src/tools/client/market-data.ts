@@ -43,7 +43,9 @@ export const getSymbolsSchema = z.object({
 });
 
 export async function getSymbols(client: RestClient, params: z.infer<typeof getSymbolsSchema>) {
-  const resp = await client.get<{ symbols: Array<{ name?: string }> }>("/symbols/query");
+  const resp = await client.get<{ symbols: Array<{ n?: string; name?: string }> }>(
+    "/symbols/query",
+  );
   const symbols = resp.symbols || [];
   if (params.filter) {
     const pattern = params.filter
@@ -51,7 +53,8 @@ export async function getSymbols(client: RestClient, params: z.infer<typeof getS
       .replace(/\*/g, ".*")
       .replace(/\?/g, ".");
     const regex = new RegExp(`^${pattern}$`, "i");
-    return symbols.filter((s) => regex.test(s.name || ""));
+    // The server returns the symbol name in `n` (tolerate `name` too for safety).
+    return symbols.filter((s) => regex.test(s.n ?? s.name ?? ""));
   }
   return symbols;
 }
