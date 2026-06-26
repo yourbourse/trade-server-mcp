@@ -12,7 +12,8 @@ afterEach(() => {
 });
 
 // Minimal controllable WebSocket double: records sent frames, lets the test
-// emit "open"/"close"/"message". close() emits "close" like the real socket.
+// emit "open"/"close"/"message". NOTE: close() emits "close" SYNCHRONOUSLY here,
+// whereas the real `ws` socket emits it asynchronously — fine for these tests.
 class FakeSocket extends EventEmitter {
   sent: string[] = [];
   closed = false;
