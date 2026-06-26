@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Client mode: the sign-in hint is no longer appended to unrelated server errors (e.g. a 502 on a data endpoint), so a server-side failure is reported as itself instead of a misleading "sign-in rejected / wrong port". The 400/404 sign-in hint wording no longer asserts port/version as the cause.
+
 ## [1.1.1] - 2026-06-10
 
 ### Security
