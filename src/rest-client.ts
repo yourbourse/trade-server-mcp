@@ -52,6 +52,9 @@ export class RestClient {
    * ApiError (errorCode "TIMEOUT", status 408) so it is reported consistently
    * AND — being an ApiError — is never auto-retried by doSend's transport loop
    * (a timeout is not proof of non-delivery; retrying could double-fill orders).
+   *
+   * Only timeout aborts (err.name === "TimeoutError") are mapped here; any other
+   * fetch failure propagates unchanged so doSend's transport-retry loop can handle it.
    */
   private async fetchWithTimeout(
     method: string,
