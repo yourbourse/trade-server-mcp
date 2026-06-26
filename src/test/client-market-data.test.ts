@@ -110,3 +110,13 @@ test("getQuotes returns null+error for failed symbol, quote for success", async 
     `error should mention 500 or SERVER_ERROR, got: ${res[1].error}`,
   );
 });
+
+test("getQuotesSchema rejects more than 50 symbols", () => {
+  const tooMany = Array.from({ length: 51 }, (_, i) => `S${i}`);
+  assert.throws(() => m.getQuotesSchema.parse({ symbols: tooMany }));
+});
+
+test("getQuotesSchema accepts exactly 50 symbols", () => {
+  const fifty = Array.from({ length: 50 }, (_, i) => `S${i}`);
+  assert.doesNotThrow(() => m.getQuotesSchema.parse({ symbols: fifty }));
+});

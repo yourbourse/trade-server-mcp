@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { RestClient } from "../../rest-client.js";
+import { mapWithConcurrency } from "../../util/concurrency.js";
+import { QUOTES_MAX_SYMBOLS, QUOTES_CONCURRENCY } from "../../constants.js";
 
 export const getQuoteSchema = z.object({
   symbol: z.string().describe("Symbol name, e.g. EURUSD"),
@@ -10,20 +12,22 @@ export async function getQuote(client: RestClient, params: z.infer<typeof getQuo
 }
 
 export const getQuotesSchema = z.object({
-  symbols: z.array(z.string()).min(1).describe("Array of symbol names, e.g. ['EURUSD', 'GBPUSD']"),
+  symbols: z
+    .array(z.string())
+    .min(1)
+    .max(QUOTES_MAX_SYMBOLS)
+    .describe(`Array of symbol names, e.g. ['EURUSD', 'GBPUSD'] (max ${QUOTES_MAX_SYMBOLS})`),
 });
 
 export async function getQuotes(client: RestClient, params: z.infer<typeof getQuotesSchema>) {
-  return Promise.all(
-    params.symbols.map(async (symbol) => {
-      try {
-        const quote = await client.get(`/quote/${encodeURIComponent(symbol)}`);
-        return { symbol, quote };
-      } catch (e) {
-        return { symbol, quote: null, error: e instanceof Error ? e.message : String(e) };
-      }
-    }),
-  );
+  return mapWithConcurrency(params.symbols, QUOTES_CONCURRENCY, async (symbol) => {
+    try {
+      const quote = await client.get(`/quote/${encodeURIComponent(symbol)}`);
+      return { symbol, quote };
+    } catch (e) {
+      return { symbol, quote: null, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 }
 
 export const getMarketDepthSchema = z.object({
