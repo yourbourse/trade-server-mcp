@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Client sign-in no longer fails when an optional config field is left blank: an unsubstituted `${...}` placeholder env value (injected by some MCP hosts for empty optional fields, such as `YB_BROKER`) is now treated as unset instead of sent as a literal value, which the server rejected with HTTP 400.
 - `get_symbols` glob filter now matches the server's symbol-name field (`n`), so patterns like `EUR*` return results instead of an empty list.
+- WebSocket: an explicit `disconnect()` is now terminal and no longer triggers a reconnect loop; pending requests are rejected promptly on close instead of hanging (Issue #9).
+- Admin trading: order-creating operations (`place_order`, `close_position`, `close_all_positions`, `close_by`) no longer retry on a transport error, matching client mode and preventing duplicate execution (Issue #9).
+- WebSocket `getSnapshot` now rejects on a subscribe failure instead of silently returning empty data, so callers can distinguish "no data" from "subscription failed" (Issue #9).
 
 ### Changed
 
