@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { RestClient } from "../rest-client.js";
+import { ApiError, RestClient } from "../rest-client.js";
 import { StaticCredentials } from "../auth/admin-auth.js";
 import { registerClientTools, CLIENT_TOOL_COUNT } from "../register-client.js";
 import { registerAdminTools } from "../register-admin.js";
@@ -69,6 +69,59 @@ test("client mode: tool errors carry the sign-in hint even for connection-level 
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /fetch failed/);
   assert.match(result.content[0].text, /CLIENT \(public\) API port/);
+});
+
+test("client mode: a 5xx tool error surfaces raw, WITHOUT the sign-in hint", async () => {
+  const server = new McpServer({ name: "t", version: "0" });
+  const handlers = new Map<
+    string,
+    (p: unknown) => Promise<{ content: { text: string }[]; isError?: boolean }>
+  >();
+  (server as any).tool = (name: string, _d: string, _s: unknown, handler: never) => {
+    handlers.set(name, handler);
+  };
+  const hint = "SOME-SIGN-IN-HINT-MARKER check that YB_BASE_URL points to the CLIENT (public) API";
+  const fakeAuth = { authFailureHint: () => hint } as never;
+  const fakeClient = {
+    get: async () => {
+      throw new ApiError("GET", "/account/state", 502, "Bad Gateway");
+    },
+    post: async () => {
+      throw new ApiError("POST", "/account/state", 502, "Bad Gateway");
+    },
+  } as never;
+  registerClientTools(server, fakeClient, fakeAuth);
+
+  const result = await handlers.get("get_account_state")!({});
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /Bad Gateway/);
+  assert.doesNotMatch(result.content[0].text, /SOME-SIGN-IN-HINT-MARKER/);
+});
+
+test("client mode: a 401 tool error DOES carry the sign-in hint", async () => {
+  const server = new McpServer({ name: "t", version: "0" });
+  const handlers = new Map<
+    string,
+    (p: unknown) => Promise<{ content: { text: string }[]; isError?: boolean }>
+  >();
+  (server as any).tool = (name: string, _d: string, _s: unknown, handler: never) => {
+    handlers.set(name, handler);
+  };
+  const hint = "SOME-SIGN-IN-HINT-MARKER check YB_LOGIN and YB_PASSWORD";
+  const fakeAuth = { authFailureHint: () => hint } as never;
+  const fakeClient = {
+    get: async () => {
+      throw new ApiError("GET", "/account/state", 401, "unauthorized");
+    },
+    post: async () => {
+      throw new ApiError("POST", "/account/state", 401, "unauthorized");
+    },
+  } as never;
+  registerClientTools(server, fakeClient, fakeAuth);
+
+  const result = await handlers.get("get_account_state")!({});
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /SOME-SIGN-IN-HINT-MARKER/);
 });
 
 test("admin mode registers exactly 38 tools and 4 resources", () => {

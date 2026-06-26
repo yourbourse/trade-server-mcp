@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { RestClient } from "./rest-client.js";
+import { ApiError, RestClient } from "./rest-client.js";
 import { ClientAuth } from "./auth/client-auth.js";
 import { toolHandler } from "./tool-handler.js";
 import * as t from "./tools/client/trading.js";
@@ -20,7 +20,13 @@ export function registerClientTools(server: McpServer, client: RestClient, auth?
       try {
         return await fn(p);
       } catch (err) {
-        const hint = auth?.authFailureHint();
+        // Only attach the sign-in hint when the failure is plausibly auth/connectivity:
+        // an auth wall (401/403) or a transport error that never reached an HTTP response.
+        // A server error that DID respond (e.g. 5xx) is not a sign-in problem — surface it raw.
+        const isAuthWall =
+          err instanceof ApiError && (err.statusCode === 401 || err.statusCode === 403);
+        const isConnectivity = !(err instanceof ApiError);
+        const hint = isAuthWall || isConnectivity ? auth?.authFailureHint() : null;
         if (hint && err instanceof Error) {
           throw new Error(`${err.message}\n${hint}`, { cause: err.cause });
         }
