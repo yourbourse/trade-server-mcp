@@ -11,7 +11,7 @@ output, so if you are not sure what is happening, start with
 |---|---|
 | The server never appears in your MCP client, or shows as failed/disconnected | [The server won't start](#the-server-wont-start-configuration-errors) |
 | Log shows `sign-in FAILED` at startup | [Sign-in fails in client mode](#sign-in-fails-in-client-mode-loginpassword) |
-| Sign-in fails with HTTP 400, or the hint about the "CLIENT (public) API port" | [Sign-in rejected with HTTP 400](#sign-in-rejected-with-http-400-wrong-port-or-older-server) |
+| Sign-in fails with HTTP 400 or 404 (invalid parameter) | [Sign-in rejected with HTTP 400/404](#sign-in-rejected-with-http-400-or-404-invalid-parameter) |
 | Tool calls fail with connection drops (`fetch failed`, `socket hang up`, `ECONNRESET`) | [Older Trade Server versions](#older-trade-server-versions-server-compatibility) |
 | Every tool error ends with the same extra hint line | [Tool errors carry a sign-in hint](#tool-errors-carry-a-sign-in-hint) |
 | `get_symbols` returns an empty list | [get_symbols returns an empty list](#get_symbols-returns-an-empty-list) |
@@ -70,7 +70,7 @@ each tool call. The `<hint>` is a targeted diagnosis. There are four possible hi
 | Hint (exact text) | Meaning | What to do |
 |---|---|---|
 | `Sign-in to the Trade Server failed: check YB_LOGIN and YB_PASSWORD.` | The server answered 401 or 403: it understood the request but rejected the credentials. | Verify your account number and password (the sign-in request is signed with your password — a wrong password makes the signature invalid). If your server hosts more than one broker, you may also need `YB_BROKER` — ask your broker. |
-| `The Trade Server rejected the sign-in request — check that YB_BASE_URL points to the CLIENT (public) API port: it is a different port from the admin API on the same server. If the port is right, the server version may predate the public client API; ask your broker.` | The server answered 400 or 404: it did not accept the sign-in request at all. | See [Sign-in rejected with HTTP 400](#sign-in-rejected-with-http-400-wrong-port-or-older-server) below. |
+| `Sign-in was rejected by the Trade Server (HTTP 400) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to the client (public) API (it can use a different port from the admin API), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for the client API on this server, or the server version may predate it — check with your broker.` | The server answered 400 or 404: it did not accept the sign-in request at all (an invalid parameter or wrong endpoint). | See [Sign-in rejected with HTTP 400/404](#sign-in-rejected-with-http-400-or-404-invalid-parameter) below. |
 | `Could not reach the Trade Server: check YB_BASE_URL and network connectivity.` | No HTTP response at all — wrong URL or port, DNS failure, firewall, VPN, or the sign-in timed out (10 seconds). | Confirm `YB_BASE_URL` (scheme, host, and port) with your broker, then check basic connectivity to that host from your machine. |
 | `Sign-in to the Trade Server failed (HTTP <status>).` | Any other HTTP status (for example a 5xx server error). | Check the full log line for the response body, and contact your broker if it persists. |
 
@@ -86,19 +86,23 @@ body). Two combinations cover almost all sign-in failures:
 | HTTP status | Server error code | Meaning |
 |---|---|---|
 | **401** | `1` | Bad credentials — in practice, a wrong password (the request signature did not verify). |
-| **400** | `3` | The server rejected the sign-in request for this account — first suspect the wrong port (see below), then an older server. |
+| **400** | `3` | The server rejected the sign-in request as an invalid parameter — check the URL/port and any optional fields (e.g. `YB_BROKER`), then an older server. See below. |
 
-## Sign-in rejected with HTTP 400 (wrong port, or older server)
+## Sign-in rejected with HTTP 400 or 404 (invalid parameter)
 
-When sign-in fails with HTTP 400 (or 404), check two things, in this order:
+HTTP 400/404 (server error code `3`) means the Trade Server did not accept the sign-in
+request itself — an **invalid parameter** or wrong endpoint. Check these, in order:
 
-1. **Wrong port — the most common cause.** The client (public) API and the admin API are
-   served on **different ports of the same Trade Server**. If `YB_BASE_URL` points at the
-   admin port, trading-account sign-ins are rejected with 400 even though the host is right
-   and the server is perfectly current. Ask your broker (or whoever operates the server) for
-   the **client** API port and fix the port in `YB_BASE_URL`.
-2. **Older server version.** If the port is confirmed correct and sign-in is still rejected,
-   the server version may predate the public client API — see
+1. **An invalid or stray optional field.** The sign-in body needs only your login; an
+   optional field carrying a bad value gets the whole request rejected. In particular, leave
+   `YB_BROKER` **unset** unless your broker told you to set it. (An empty or
+   placeholder-only value is treated as unset, so a blank optional field is safe.)
+2. **Wrong port.** The client (public) API and the admin API are served on **different ports
+   of the same Trade Server**. If `YB_BASE_URL` points at the admin port, trading-account
+   sign-ins are rejected with 400 even on a perfectly current server. Ask your broker for the
+   **client** API port and fix it in `YB_BASE_URL`.
+3. **Older server version.** If the configuration is confirmed correct and sign-in is still
+   rejected, the server version may predate the public client API — see
    [Older Trade Server versions](#older-trade-server-versions-server-compatibility) below.
 
 ## Older Trade Server versions (server compatibility)
@@ -108,10 +112,10 @@ The login/password sign-in and the client-mode data endpoints belong to the Trad
 above — pointing at the admin port produces similar symptoms on a fully current server. On
 genuinely older builds, incompatibility shows up in two distinct ways:
 
-- **Sign-in fails with HTTP 400** (server error code 3) at the correct client port, and the
-  hint reads:
+- **Sign-in fails with HTTP 400** (server error code 3) at the correct client port with the
+  configuration confirmed, and the hint reads:
 
-  > The Trade Server rejected the sign-in request — check that YB_BASE_URL points to the CLIENT (public) API port: it is a different port from the admin API on the same server. If the port is right, the server version may predate the public client API; ask your broker.
+  > Sign-in was rejected by the Trade Server (HTTP 400) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to the client (public) API (it can use a different port from the admin API), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for the client API on this server, or the server version may predate it — check with your broker.
 
 - **`get_balances` and `get_limits` drop the connection.** Sign-in may succeed and
   everything else works — but these two tools fail with transport-level errors such as

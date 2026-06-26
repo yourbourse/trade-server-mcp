@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Client sign-in no longer fails when an optional config field is left blank: an unsubstituted `${...}` placeholder env value (injected by some MCP hosts for empty optional fields, such as `YB_BROKER`) is now treated as unset instead of sent as a literal value, which the server rejected with HTTP 400.
+- `get_symbols` glob filter now matches the server's symbol-name field (`n`), so patterns like `EUR*` return results instead of an empty list.
+
+### Changed
+
+- Reworded the HTTP 400/404 sign-in hint: it no longer asserts a wrong port as the cause, and instead points to invalid-parameter / stray optional field / wrong endpoint / server-side possibilities.
+
 ## [1.1.1] - 2026-06-10
 
 ### Security
