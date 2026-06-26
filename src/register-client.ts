@@ -1,5 +1,5 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ApiError, RestClient } from "./rest-client.js";
+import { RestClient } from "./rest-client.js";
 import { ClientAuth } from "./auth/client-auth.js";
 import { toolHandler } from "./tool-handler.js";
 import * as t from "./tools/client/trading.js";
@@ -20,13 +20,13 @@ export function registerClientTools(server: McpServer, client: RestClient, auth?
       try {
         return await fn(p);
       } catch (err) {
-        // Only attach the sign-in hint when the failure is plausibly auth/connectivity:
-        // an auth wall (401/403) or a transport error that never reached an HTTP response.
-        // A server error that DID respond (e.g. 5xx) is not a sign-in problem — surface it raw.
-        const isAuthWall =
-          err instanceof ApiError && (err.statusCode === 401 || err.statusCode === 403);
-        const isConnectivity = !(err instanceof ApiError);
-        const hint = isAuthWall || isConnectivity ? auth?.authFailureHint() : null;
+        // authFailureHint() is non-null only while sign-in has failed (no valid token), so
+        // append it to any tool error in that state. We deliberately do NOT gate on the error's
+        // HTTP status: some gateways answer an unauthenticated request with a 5xx (e.g. 502)
+        // rather than 401, and suppressing the hint there would hide the real "check your
+        // credentials / sign-in failed" guidance. When signed in, authFailureHint() is null,
+        // so a genuine server error surfaces on its own.
+        const hint = auth?.authFailureHint();
         if (hint && err instanceof Error) {
           throw new Error(`${err.message}\n${hint}`, { cause: err.cause });
         }

@@ -71,7 +71,10 @@ test("client mode: tool errors carry the sign-in hint even for connection-level 
   assert.match(result.content[0].text, /CLIENT \(public\) API port/);
 });
 
-test("client mode: a 5xx tool error surfaces raw, WITHOUT the sign-in hint", async () => {
+test("client mode: a 5xx tool error still carries the sign-in hint when sign-in has failed", async () => {
+  // Some gateways answer an unauthenticated request with a 5xx (e.g. 502) instead of 401.
+  // The hint must NOT be gated on status — while not signed in, it stays attached so the
+  // user gets the real "sign-in failed / check credentials" guidance.
   const server = new McpServer({ name: "t", version: "0" });
   const handlers = new Map<
     string,
@@ -80,7 +83,7 @@ test("client mode: a 5xx tool error surfaces raw, WITHOUT the sign-in hint", asy
   (server as any).tool = (name: string, _d: string, _s: unknown, handler: never) => {
     handlers.set(name, handler);
   };
-  const hint = "SOME-SIGN-IN-HINT-MARKER check that YB_BASE_URL points to the CLIENT (public) API";
+  const hint = "SOME-SIGN-IN-HINT-MARKER sign-in failed: check YB_LOGIN and YB_PASSWORD";
   const fakeAuth = { authFailureHint: () => hint } as never;
   const fakeClient = {
     get: async () => {
@@ -95,7 +98,7 @@ test("client mode: a 5xx tool error surfaces raw, WITHOUT the sign-in hint", asy
   const result = await handlers.get("get_account_state")!({});
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /Bad Gateway/);
-  assert.doesNotMatch(result.content[0].text, /SOME-SIGN-IN-HINT-MARKER/);
+  assert.match(result.content[0].text, /SOME-SIGN-IN-HINT-MARKER/);
 });
 
 test("client mode: a 401 tool error DOES carry the sign-in hint", async () => {
