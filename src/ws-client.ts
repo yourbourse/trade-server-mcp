@@ -196,7 +196,7 @@ export class WsClient {
 
     await this.ensureConnected();
 
-    return new Promise(async (resolve) => {
+    return new Promise<unknown[]>(async (resolve, reject) => {
       const timer = setTimeout(() => {
         this.subscriptionHandlers.delete(reqId);
         this.unsubscribe(channel, payload, reqId);
@@ -209,10 +209,10 @@ export class WsClient {
 
       try {
         await this.subscribe(channel, payload, reqId);
-      } catch {
+      } catch (err) {
         clearTimeout(timer);
         this.subscriptionHandlers.delete(reqId);
-        resolve(results);
+        reject(err instanceof Error ? err : new Error(String(err)));
         return;
       }
 

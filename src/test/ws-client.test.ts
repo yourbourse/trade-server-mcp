@@ -1,7 +1,15 @@
-import { test } from "node:test";
+import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { WsClient } from "../ws-client.js";
+
+// Safety net: disconnect any client a test opened — even if an assertion threw
+// before the test's own disconnect() — so the keepalive ping interval can't leak
+// and hang `node --test`.
+const activeClients: WsClient[] = [];
+afterEach(() => {
+  for (const c of activeClients.splice(0)) c.disconnect();
+});
 
 // Minimal controllable WebSocket double: records sent frames, lets the test
 // emit "open"/"close"/"message". close() emits "close" like the real socket.
@@ -28,7 +36,9 @@ function makeClient() {
     sockets.push(s);
     return s as unknown as import("ws").WebSocket;
   };
-  return { client: new WsClient(CONFIG, factory), sockets };
+  const client = new WsClient(CONFIG, factory);
+  activeClients.push(client);
+  return { client, sockets };
 }
 
 /** connect() and drive the socket to "open". */
@@ -69,4 +79,29 @@ test("unexpected close triggers a reconnect", async () => {
   sockets[1].emit("open"); // complete the reconnect cleanly
   await tick();
   client.disconnect(); // stop ping interval so the test process can exit
+});
+
+test("getSnapshot rejects when the subscribe is refused", async () => {
+  const { client, sockets } = await openClient();
+  const snap = client.getSnapshot("L1", { s: "EURUSD" }, { timeoutMs: 50 });
+  await tick(); // let getSnapshot send the subscribe frame
+  const reqId = JSON.parse(sockets[0].sent.at(-1)!).reqId;
+  sockets[0].emit(
+    "message",
+    JSON.stringify({ m: "subscribe", s: false, reqId, e: { msg: "denied" } }),
+  );
+  await assert.rejects(() => snap, /denied/i);
+  client.disconnect();
+});
+
+test("getSnapshot collects data and resolves on success", async () => {
+  const { client, sockets } = await openClient();
+  const snap = client.getSnapshot("L1", { s: "EURUSD" }, { timeoutMs: 50 });
+  await tick();
+  const reqId = JSON.parse(sockets[0].sent.at(-1)!).reqId;
+  sockets[0].emit("message", JSON.stringify({ m: "subscribe", s: true, reqId }));
+  sockets[0].emit("message", JSON.stringify({ reqId, c: "L1", d: [{ bid: 1.1, ask: 1.2 }] }));
+  const result = await snap;
+  assert.ok(Array.isArray(result) && result.length >= 1, "should collect the data frame");
+  client.disconnect();
 });
