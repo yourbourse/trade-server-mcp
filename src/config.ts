@@ -12,7 +12,8 @@ export type ServerConfig = (
 const HELP = `Trade Server MCP configuration:
   Admin mode  (brokers): YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY [+ YB_MODE=admin] (set YB_MODE explicitly if mixing credential variables)
   Client mode (traders): YB_BASE_URL + YB_LOGIN + YB_PASSWORD [+ YB_BROKER] + YB_MODE=client
-  Client mode (token):   YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY + YB_MODE=client`;
+  Client mode (token):   YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY + YB_MODE=client
+  Optional (all modes):  YB_REQUEST_TIMEOUT_MS (per-request timeout in ms; positive integer; default 10000)`;
 
 export function parseConfig(env: Record<string, string | undefined>): ServerConfig {
   const v = (name: string) => {
