@@ -160,14 +160,16 @@ test("authFailureHint returns credentials hint after a 401 authorize failure", a
   auth.stop();
 });
 
-test("authFailureHint returns port/server-version hint after a 400 failure", async () => {
-  globalThis.fetch = (async () => new Response("bad request", { status: 400 })) as any;
+test("authFailureHint explains an invalid-parameter rejection after a 400 failure (does not assert wrong-port as the cause)", async () => {
+  globalThis.fetch = (async () =>
+    new Response('{"title":"Invalid parameter","code":"3"}', { status: 400 })) as any;
   const auth = new ClientAuth("http://ts.local", { login: 1, password: "pw" });
   await assert.rejects(() => auth.authorize());
-  assert.equal(
-    auth.authFailureHint(),
-    "The Trade Server rejected the sign-in request — check that YB_BASE_URL points to the CLIENT (public) API port: it is a different port from the admin API on the same server. If the port is right, the server version may predate the public client API; ask your broker.",
-  );
+  const hint = auth.authFailureHint();
+  assert.ok(hint);
+  assert.match(hint!, /HTTP 400/);
+  assert.match(hint!, /invalid request parameter|invalid parameter/i);
+  assert.match(hint!, /optional fields/i);
   auth.stop();
 });
 
