@@ -18,7 +18,11 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
     const raw = env[name];
     if (raw === undefined) return undefined;
     const t = raw.trim();
-    return t === "" ? undefined : t;
+    // An unsubstituted manifest placeholder (e.g. "${user_config.yb_broker}", which Claude
+    // Desktop injects for an empty optional .mcpb field) is treated as unset — otherwise the
+    // literal string is sent as a real value and the server rejects the request.
+    if (t === "" || /^\$\{[^}]*\}$/.test(t)) return undefined;
+    return t;
   };
 
   const baseUrl = v("YB_BASE_URL");

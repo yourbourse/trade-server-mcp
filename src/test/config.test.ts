@@ -75,3 +75,15 @@ test("whitespace-only YB_BASE_URL throws with variable name in message", () => {
 test("only YB_PASSWORD set (no YB_LOGIN) throws requiring YB_LOGIN", () => {
   assert.throws(() => parseConfig({ ...BASE, YB_PASSWORD: "pw" }), /requires YB_LOGIN/);
 });
+
+test("an unsubstituted ${...} placeholder (blank optional .mcpb field) is treated as unset", () => {
+  // Claude Desktop injects the literal `${user_config.yb_broker}` when the optional Broker
+  // field is left blank; it must NOT become a real broker value (which the server rejects).
+  const c = parseConfig({
+    ...BASE,
+    YB_LOGIN: "100",
+    YB_PASSWORD: "pw",
+    YB_BROKER: "${user_config.yb_broker}",
+  });
+  assert.ok(c.mode === "client" && c.auth.style === "login" && c.auth.broker === undefined);
+});
