@@ -46,7 +46,7 @@ carries a targeted hint telling you which of the three likely causes applies:
 - Sign-in rejected — HTTP 400/404, an invalid request parameter (check the URL/port and any
   optional fields such as `YB_BROKER`):
 
-  > Sign-in was rejected by the Trade Server (HTTP 400) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to the client (public) API (it can use a different port from the admin API), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for the client API on this server, or the server version may predate it — check with your broker.
+  > Sign-in was rejected by the Trade Server (HTTP 400/404) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to the client (public) API (it can use a different port from the admin API), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for the client API on this server, or the server version may predate it — check with your broker.
 
 - Connectivity (the server could not be reached at all):
 
