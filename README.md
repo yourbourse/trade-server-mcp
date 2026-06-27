@@ -86,7 +86,8 @@ for every client.
 **No-clone install (recommended).** Node.js 18+ and git are all you need — your MCP client fetches,
 builds, and runs the server straight from this repository. It tracks the **latest version on the
 `main` branch** (a moving target, not a fixed release), so fixes and improvements reach you without
-editing your config — npx refreshes its cached copy over time. Point your client's `command`/`args`
+editing your config — clear the npx cache when you want the newest `main`, since npx caches by spec
+and may keep running its cached copy until you do. Point your client's `command`/`args`
 at `npx -y github:yourbourse/trade-server-mcp`; complete per-client config snippets (Claude Desktop,
 Claude Code, and others), both modes, and every environment variable are in
 [Configuration](docs/CONFIGURATION.md).

@@ -36,7 +36,7 @@ from GitHub. Nothing to download manually; you just use
 configuration instead of a local file path. It tracks the latest code on the `main` branch (a moving
 target, not a fixed release), so you're not stuck on an old version (prefer a fixed version? pin a tag
 or commit — see [Configuration](./CONFIGURATION.md#pinning-a-version)). The first launch takes a little longer (npx
-fetches and builds the release once, then caches it). Requires Node.js 18+ and git.
+fetches and builds the code from `main` once, then caches it). Requires Node.js 18+ and git.
 All full configuration examples in [Configuration](./CONFIGURATION.md) work with either
 option — just swap the `command`/`args` pair.
 

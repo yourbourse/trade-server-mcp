@@ -55,7 +55,7 @@ The examples below use placeholders — replace `<your-server-host>:<port>`, `<a
 
 Requirements: **Node.js 18+** and **git**. On the first launch, npx fetches and builds the latest
 code from the `main` branch then caches it — subsequent starts are instant. Because npx caches by
-spec, you pick up newer commits when the cache refreshes (clear the npx cache to force an update).
+spec, it may keep running the cached copy until you clear the npx cache, which forces a refetch of the newest `main`.
 Prefer a fixed, reproducible version? See [Pinning a version](#pinning-a-version) below.
 
 ### Setup 1: Admin mode (broker administrators)
