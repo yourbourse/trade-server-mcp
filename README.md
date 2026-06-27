@@ -300,7 +300,7 @@ configuration and the server's process environment; nothing is ever written to d
 or echoed back to the AI. Order-placing requests are never retried on connection errors, so a
 network blip cannot turn into a duplicate fill. The project ships **no npm package by
 design**: distribution is npx straight from GitHub — the `main` branch by default, or a pinned tag
-or commit for a reproducible build — never the npm registry, keeping the supply chain to four pinned
+or commit for a reproducible build — never the npm registry, keeping the supply chain to four direct
 runtime dependencies. Full details, recommended practices, and the vulnerability reporting
 process are in [SECURITY.md](docs/SECURITY.md).
 
