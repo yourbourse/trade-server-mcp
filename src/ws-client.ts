@@ -90,6 +90,9 @@ export class WsClient {
         `WS reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`,
       );
       await new Promise((r) => setTimeout(r, delay));
+      // disconnect() may have flipped isShuttingDown during the backoff above; a terminal
+      // shutdown must not be undone by connect() (which resets the flag and reopens the socket).
+      if (this.isShuttingDown) break;
 
       try {
         await this.connect();

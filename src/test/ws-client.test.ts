@@ -64,6 +64,17 @@ test("explicit disconnect does not reconnect", async () => {
   assert.equal(sockets.length, 1, "no new socket should be created after disconnect");
 });
 
+test("disconnect() during the reconnect backoff is terminal (no socket reopens)", async () => {
+  const { client, sockets } = await openClient();
+  sockets[0].emit("close"); // unexpected close → attemptReconnect starts and awaits the ~1000ms backoff
+  await new Promise((r) => setTimeout(r, 100)); // we are now inside the backoff window
+  client.disconnect(); // flips isShuttingDown mid-backoff
+  // Wait past the first backoff (~1000ms). Without the post-delay shutdown re-check, the loop would
+  // call connect() (which resets isShuttingDown) and reopen a second socket; the fix breaks instead.
+  await new Promise((r) => setTimeout(r, 1200));
+  assert.equal(sockets.length, 1, "a disconnect during backoff must not reopen the socket");
+});
+
 test("pending requests reject on disconnect (no hang)", async () => {
   const { client } = await openClient();
   const pending = client.subscribe("L1", { s: "EURUSD" }, "req1"); // pending sendAndWait
