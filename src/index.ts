@@ -12,12 +12,13 @@ import { registerClientTools } from "./register-client.js";
 
 async function main() {
   const config = parseConfig(process.env);
-  const server = new McpServer({ name: "trade-server", version: "1.1.1" });
+  const server = new McpServer({ name: "trade-server", version: "2.0.0" });
 
   if (config.mode === "admin") {
     const restClient = new RestClient(
       config.baseUrl,
       new StaticCredentials(config.apiKey, config.secretKey),
+      config.requestTimeoutMs,
     );
     const wsClient = new WsClient({
       apiKey: config.apiKey,
@@ -60,7 +61,7 @@ async function main() {
       provider = new StaticCredentials(config.auth.apiKey, config.auth.secretKey);
       console.error("Trade Server MCP: client mode (public API token)");
     }
-    const restClient = new RestClient(config.baseUrl, provider);
+    const restClient = new RestClient(config.baseUrl, provider, config.requestTimeoutMs);
     registerClientTools(server, restClient, clientAuth);
   }
 

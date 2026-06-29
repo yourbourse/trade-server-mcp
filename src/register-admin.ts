@@ -5,8 +5,6 @@ import { toolHandler } from "./tool-handler.js";
 
 // Tool imports
 import {
-  placeOrderSchema,
-  placeOrder,
   cancelOrderSchema,
   cancelOrder,
   modifyOrderSchema,
@@ -15,8 +13,6 @@ import {
   getWorkingOrders,
   getOpenPositionsSchema,
   getOpenPositions,
-  closePositionSchema,
-  closePosition,
   modifyPositionSltpSchema,
   modifyPositionSltp,
   getTradeHistorySchema,
@@ -25,16 +21,28 @@ import {
   getOrderHistory,
   cancelAllOrdersSchema,
   cancelAllOrders,
-  closeAllPositionsSchema,
-  closeAllPositions,
-  closeBySchema,
-  closeBy,
   modifyOrderSltpSchema,
   modifyOrderSltp,
   forceDeleteOrderSchema,
   forceDeleteOrder,
   getAccountSummarySchema,
   getAccountSummary,
+  placeOrderPlanSchema,
+  placeOrderPlan,
+  placeOrderCommitSchema,
+  placeOrderCommit,
+  closePositionPlanSchema,
+  closePositionPlan,
+  closePositionCommitSchema,
+  closePositionCommit,
+  closeByPlanSchema,
+  closeByPlan,
+  closeByCommitSchema,
+  closeByCommit,
+  closeAllPositionsPlanSchema,
+  closeAllPositionsPlan,
+  closeAllPositionsCommitSchema,
+  closeAllPositionsCommit,
 } from "./tools/admin/trading.js";
 
 import {
@@ -95,11 +103,25 @@ import {
 export function registerAdminTools(server: McpServer, restClient: RestClient, wsClient: WsClient) {
   // === TRADING TOOLS ===
 
-  server.tool(
-    "place_order",
-    "Place a new order. Supports Market, Limit, Stop, StopLimit, and CloseBy types. For Market orders use timeInForce IOC or FOK. Limit/Stop orders require limitPrice/stopPrice respectively. Optionally attach stopLoss, takeProfit, and a comment.",
-    placeOrderSchema.shape,
-    toolHandler((params) => placeOrder(restClient, params)),
+  server.registerTool(
+    "place_order_plan",
+    {
+      description:
+        "STEP 1 of placing an order on a client account — preview WITHOUT executing. Validates and returns the order summary (including the target account) plus a commitToken; if required details are missing (account, symbol, side, quantity, order type, time-in-force) it returns exactly what's needed. Show the preview; only after the user confirms, call place_order_commit. Nothing is sent.",
+      inputSchema: placeOrderPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => placeOrderPlan(restClient, params)),
+  );
+  server.registerTool(
+    "place_order_commit",
+    {
+      description:
+        "STEP 2 — execute the order previewed by place_order_plan on the client account. Requires the commitToken from that preview. Places a LIVE order via an AI assistant — only call after the user has reviewed the preview and explicitly confirmed.",
+      inputSchema: placeOrderCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => placeOrderCommit(restClient, params)),
   );
 
   server.tool(
@@ -130,11 +152,25 @@ export function registerAdminTools(server: McpServer, restClient: RestClient, ws
     toolHandler((params) => getOpenPositions(restClient, params)),
   );
 
-  server.tool(
-    "close_position",
-    "Close an open position (full or partial). Specify quantity for partial close, omit for full close. Internally places an opposite market order against the position.",
-    closePositionSchema.shape,
-    toolHandler((params) => closePosition(restClient, params)),
+  server.registerTool(
+    "close_position_plan",
+    {
+      description:
+        "STEP 1 — preview closing a client account's position WITHOUT executing; returns a commitToken. Needs accountId + positionId (optional quantity for a partial close). Show the preview; only after the user confirms, call close_position_commit. Nothing is sent.",
+      inputSchema: closePositionPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => closePositionPlan(restClient, params)),
+  );
+  server.registerTool(
+    "close_position_commit",
+    {
+      description:
+        "STEP 2 — execute the close previewed by close_position_plan. Requires the commitToken. Places a LIVE closing order — only after explicit user confirmation.",
+      inputSchema: closePositionCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => closePositionCommit(restClient, params)),
   );
 
   server.tool(
@@ -165,18 +201,46 @@ export function registerAdminTools(server: McpServer, restClient: RestClient, ws
     toolHandler((params) => cancelAllOrders(restClient, params)),
   );
 
-  server.tool(
-    "close_all_positions",
-    "Close all open positions on an account in one call. Optionally filter by symbol. Useful for test cleanup or emergency flatten. Returns count of closed positions.",
-    closeAllPositionsSchema.shape,
-    toolHandler((params) => closeAllPositions(restClient, params)),
+  server.registerTool(
+    "close_all_positions_plan",
+    {
+      description:
+        "STEP 1 — preview closing ALL of a client account's open positions (optionally filtered by symbol) WITHOUT executing; returns a commitToken. High-impact — needs accountId. Show the preview; only after the user confirms, call close_all_positions_commit. Nothing is sent.",
+      inputSchema: closeAllPositionsPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => closeAllPositionsPlan(restClient, params)),
+  );
+  server.registerTool(
+    "close_all_positions_commit",
+    {
+      description:
+        "STEP 2 — execute the close-all previewed by close_all_positions_plan. Requires the commitToken. LIVE and high-impact (closes every matching position) — only after explicit user confirmation.",
+      inputSchema: closeAllPositionsCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => closeAllPositionsCommit(restClient, params)),
   );
 
-  server.tool(
-    "close_by",
-    "Close two opposite (hedged) positions against each other. Both positions must be on the same symbol with opposite sides. Uses the smaller quantity. Common MT5 operation for hedge accounts.",
-    closeBySchema.shape,
-    toolHandler((params) => closeBy(restClient, params)),
+  server.registerTool(
+    "close_by_plan",
+    {
+      description:
+        "STEP 1 — preview a hedged close (two opposite positions on the same symbol) on a client account WITHOUT executing; returns a commitToken. Needs accountId + positionId + positionById. Show the preview; only after the user confirms, call close_by_commit. Nothing is sent.",
+      inputSchema: closeByPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => closeByPlan(restClient, params)),
+  );
+  server.registerTool(
+    "close_by_commit",
+    {
+      description:
+        "STEP 2 — execute the hedged close previewed by close_by_plan. Requires the commitToken. Places a LIVE close — only after explicit user confirmation.",
+      inputSchema: closeByCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => closeByCommit(restClient, params)),
   );
 
   server.tool(

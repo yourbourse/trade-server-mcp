@@ -84,9 +84,12 @@ supply-chain attacks in May 2026 — including the compromises of **TanStack**,
 installers within hours. For software that holds trading credentials, we distribute from
 this GitHub repository only, in two forms:
 
-- **npx pinned to a release tag (recommended):** `npx -y github:yourbourse/trade-server-mcp#<tag>`.
-  A tag pin is immutable — it cannot be silently replaced the way a mutable registry version
-  can, and there is no registry account to hijack.
+- **npx straight from GitHub (default):** `npx -y github:yourbourse/trade-server-mcp` follows the
+  repository's `main` branch (the latest code — a mutable target), and there is no registry account to
+  hijack. For a reproducible, immutable build, pin a release **tag**
+  (`npx -y github:yourbourse/trade-server-mcp#<tag>`) or — for a guarantee the code can never change —
+  a **commit SHA** (`#<commit-sha>`), which cannot be silently replaced the way a mutable registry
+  version can.
 - **Or install from source:** clone the GitHub repository, check out a tag or commit you
   trust, and build locally (see [Getting Started](./GETTING_STARTED.md)).
 - **Install dependencies with `npm ci` only.** It installs exactly what the committed

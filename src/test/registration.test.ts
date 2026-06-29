@@ -7,29 +7,53 @@ import { registerClientTools, CLIENT_TOOL_COUNT } from "../register-client.js";
 import { registerAdminTools } from "../register-admin.js";
 import { WsClient } from "../ws-client.js";
 
-test("client mode registers exactly 26 tools, none with accountId", () => {
+test("client mode registers exactly CLIENT_TOOL_COUNT tools, none leaking accountId", () => {
   const server = new McpServer({ name: "t", version: "0" });
   const registered: string[] = [];
-  const original = server.tool.bind(server);
-  (server as any).tool = (name: string, ...rest: unknown[]) => {
-    registered.push(name);
-    const schema = rest[1] as Record<string, unknown> | undefined;
+  const checkLeak = (name: string, schema: Record<string, unknown> | undefined) => {
     if (schema && "accountId" in schema)
       throw new Error(`${name} leaked accountId into client mode`);
-    return (original as any)(name, ...rest);
+  };
+  // Intercept BOTH registration APIs: legacy tool(name, desc, schema, cb) and the new
+  // registerTool(name, {inputSchema, ...}, cb) used by the plan/commit tools.
+  const originalTool = server.tool.bind(server);
+  (server as any).tool = (name: string, ...rest: unknown[]) => {
+    registered.push(name);
+    checkLeak(name, rest[1] as Record<string, unknown> | undefined);
+    return (originalTool as any)(name, ...rest);
+  };
+  const originalRegister = server.registerTool.bind(server);
+  (server as any).registerTool = (
+    name: string,
+    config: { inputSchema?: unknown },
+    ...rest: unknown[]
+  ) => {
+    registered.push(name);
+    checkLeak(name, config?.inputSchema as Record<string, unknown> | undefined);
+    return (originalRegister as any)(name, config, ...rest);
   };
   const client = new RestClient("http://ts", new StaticCredentials("K", "S"));
   registerClientTools(server, client);
   assert.equal(registered.length, CLIENT_TOOL_COUNT);
-  assert.equal(CLIENT_TOOL_COUNT, 26);
+  assert.equal(CLIENT_TOOL_COUNT, 30);
   for (const required of [
-    "place_order",
-    "close_by",
+    "place_order_plan",
+    "place_order_commit",
+    "close_position_plan",
+    "close_position_commit",
+    "close_by_plan",
+    "close_by_commit",
+    "close_all_positions_plan",
+    "close_all_positions_commit",
     "get_limits",
     "get_balances",
     "health_check",
   ]) {
     assert.ok(registered.includes(required), `missing ${required}`);
+  }
+  // every one-shot money-mover is replaced by a plan/commit pair (no un-gated execution path)
+  for (const oneShot of ["place_order", "close_position", "close_by", "close_all_positions"]) {
+    assert.ok(!registered.includes(oneShot), `one-shot ${oneShot} must be removed`);
   }
   for (const adminOnly of [
     "cash_transfer",
@@ -71,15 +95,21 @@ test("client mode: tool errors carry the sign-in hint even for connection-level 
   assert.match(result.content[0].text, /CLIENT \(public\) API port/);
 });
 
-test("admin mode registers exactly 38 tools and 4 resources", () => {
+test("admin mode registers exactly 42 tools and 4 resources", () => {
   const server = new McpServer({ name: "t", version: "0" });
   let toolCount = 0;
   let resourceCount = 0;
   const originalTool = server.tool.bind(server);
+  const originalRegister = server.registerTool.bind(server);
   const originalResource = server.resource.bind(server);
+  // Count BOTH registration APIs: legacy tool() and the registerTool() used by plan/commit tools.
   (server as any).tool = (...args: unknown[]) => {
     toolCount++;
     return (originalTool as any)(...args);
+  };
+  (server as any).registerTool = (...args: unknown[]) => {
+    toolCount++;
+    return (originalRegister as any)(...args);
   };
   (server as any).resource = (...args: unknown[]) => {
     resourceCount++;
@@ -89,6 +119,6 @@ test("admin mode registers exactly 38 tools and 4 resources", () => {
   // Real WsClient with dummy config — never connected, so no socket is opened.
   const ws = new WsClient({ apiKey: "k", secretKey: "s", baseUrl: "http://127.0.0.1:9" });
   registerAdminTools(server, client, ws);
-  assert.equal(toolCount, 38);
+  assert.equal(toolCount, 42);
   assert.equal(resourceCount, 4);
 });

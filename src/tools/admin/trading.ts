@@ -1,12 +1,19 @@
 import { z } from "zod";
 import { RestClient } from "../../rest-client.js";
+import { issuePlan, takeCommit } from "../../preview/plan-commit.js";
+import { buildOrderPreview } from "../../preview/order-preview.js";
+import { completenessMessage } from "../../validation.js";
+
+// Order placement is non-idempotent: a connection reset does not prove the
+// server never received the order, so a transport-level retry could fill twice.
+const NO_TRANSPORT_RETRY = { retryOnConnectionError: false };
 
 export const placeOrderSchema = z.object({
   accountId: z.number().describe("Trading account ID (login)"),
   symbol: z.string().describe("Symbol name, e.g. EURUSD"),
   side: z.enum(["buy", "sell"]).describe("Order side"),
   quantity: z.number().positive().describe("Volume in lots, e.g. 0.1"),
-  orderType: z.enum(["Market", "Limit", "Stop", "StopLimit", "CloseBy"]).describe("Order type"),
+  orderType: z.enum(["Market", "Limit", "Stop", "StopLimit"]).describe("Order type"),
   timeInForce: z
     .enum(["FOK", "IOC", "GTC", "GTD", "Day", "Ms"])
     .describe("Time in force. Use IOC or FOK for Market orders"),
@@ -14,8 +21,6 @@ export const placeOrderSchema = z.object({
   stopPrice: z.number().optional().describe("Stop price (for Stop/StopLimit)"),
   stopLoss: z.number().optional().describe("Stop loss price"),
   takeProfit: z.number().optional().describe("Take profit price"),
-  positionId: z.number().optional().describe("Position ID (for closing specific position)"),
-  positionById: z.number().optional().describe("PositionBy ID (for CloseBy)"),
   marginCheck: z.boolean().optional().describe("Perform margin check. Default true"),
   comment: z.string().optional().describe("Order comment"),
 });
@@ -34,12 +39,10 @@ export async function placeOrder(client: RestClient, params: z.infer<typeof plac
   if (params.stopPrice !== undefined) body.sp = params.stopPrice;
   if (params.stopLoss !== undefined) body.sl = params.stopLoss;
   if (params.takeProfit !== undefined) body.tp = params.takeProfit;
-  if (params.positionId !== undefined) body.pi = params.positionId;
-  if (params.positionById !== undefined) body.pbi = params.positionById;
   if (params.marginCheck !== undefined) body.mc = params.marginCheck;
   if (params.comment !== undefined) body.ct = params.comment;
 
-  return client.post("/admin/orders/edit", body);
+  return client.post("/admin/orders/edit", body, NO_TRANSPORT_RETRY);
 }
 
 export const cancelOrderSchema = z.object({
@@ -109,7 +112,11 @@ export async function getOpenPositions(
 export const closePositionSchema = z.object({
   accountId: z.number().describe("Trading account ID"),
   positionId: z.number().describe("Position ID to close"),
-  quantity: z.number().optional().describe("Partial close volume in lots. Omit for full close"),
+  quantity: z
+    .number()
+    .positive()
+    .optional()
+    .describe("Partial close volume in lots. Omit for full close"),
 });
 
 export async function closePosition(
@@ -130,16 +137,20 @@ export async function closePosition(
   const closeSide = position.S === "buy" ? "sell" : "buy";
   const qty = params.quantity ?? position.q;
 
-  return client.post("/admin/orders/edit", {
-    A: params.accountId,
-    s: position.s,
-    S: closeSide,
-    q: qty,
-    t: "Market",
-    tif: "IOC",
-    pi: params.positionId,
-    mc: false,
-  });
+  return client.post(
+    "/admin/orders/edit",
+    {
+      A: params.accountId,
+      s: position.s,
+      S: closeSide,
+      q: qty,
+      t: "Market",
+      tif: "IOC",
+      pi: params.positionId,
+      mc: false,
+    },
+    NO_TRANSPORT_RETRY,
+  );
 }
 
 export const modifyPositionSltpSchema = z.object({
@@ -313,16 +324,20 @@ export async function closeAllPositions(
   for (const pos of positions) {
     try {
       const closeSide = pos.S === "buy" ? "sell" : "buy";
-      await client.post("/admin/orders/edit", {
-        A: params.accountId,
-        s: pos.s,
-        S: closeSide,
-        q: pos.q,
-        t: "Market",
-        tif: "IOC",
-        pi: pos.id,
-        mc: false,
-      });
+      await client.post(
+        "/admin/orders/edit",
+        {
+          A: params.accountId,
+          s: pos.s,
+          S: closeSide,
+          q: pos.q,
+          t: "Market",
+          tif: "IOC",
+          pi: pos.id,
+          mc: false,
+        },
+        NO_TRANSPORT_RETRY,
+      );
       results.push({
         positionId: pos.id,
         symbol: pos.s,
@@ -381,17 +396,201 @@ export async function closeBy(client: RestClient, params: z.infer<typeof closeBy
   // Use the smaller quantity
   const qty = Math.min(position.q, byPosition.q);
 
-  return client.post("/admin/orders/edit", {
-    A: params.accountId,
-    s: position.s,
-    S: position.S === "buy" ? "sell" : "buy",
-    q: qty,
-    t: "CloseBy",
-    tif: "IOC",
-    pi: params.positionId,
-    pbi: params.positionById,
-    mc: false,
+  return client.post(
+    "/admin/orders/edit",
+    {
+      A: params.accountId,
+      s: position.s,
+      S: position.S === "buy" ? "sell" : "buy",
+      q: qty,
+      t: "CloseBy",
+      tif: "IOC",
+      pi: params.positionId,
+      pbi: params.positionById,
+      mc: false,
+    },
+    NO_TRANSPORT_RETRY,
+  );
+}
+
+// ===== money-mover preview/commit (E1a: confirm-before-execute) =====
+// *_plan validates + previews + tokenizes WITHOUT executing; *_commit consumes the token and runs
+// the unchanged admin execution fn. Preview enrichment hits client-API endpoints (which differ in
+// admin mode), so it gracefully degrades to the order echo — which names the target account.
+
+export const placeOrderPlanSchema = z.object({
+  accountId: z.number().optional().describe("Trading account ID (login)"),
+  symbol: z.string().optional().describe("Symbol name, e.g. EURUSD"),
+  side: z.enum(["buy", "sell"]).optional().describe("Order side"),
+  quantity: z.number().positive().optional().describe("Volume in lots, e.g. 0.1"),
+  orderType: z.enum(["Market", "Limit", "Stop", "StopLimit"]).optional().describe("Order type"),
+  timeInForce: z
+    .enum(["FOK", "IOC", "GTC", "GTD", "Day", "Ms"])
+    .optional()
+    .describe("Time in force. Use IOC or FOK for Market orders"),
+  limitPrice: z.number().optional().describe("Limit price (for Limit/StopLimit)"),
+  stopPrice: z.number().optional().describe("Stop price (for Stop/StopLimit)"),
+  stopLoss: z.number().optional().describe("Stop loss price"),
+  takeProfit: z.number().optional().describe("Take profit price"),
+  marginCheck: z.boolean().optional().describe("Perform margin check. Default true"),
+  comment: z.string().optional().describe("Order comment"),
+});
+const PLACE_ORDER_DISCLOSURE =
+  "You are confirming a LIVE order placed on a client account via an AI assistant. Review the details, then call place_order_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function placeOrderPlan(
+  client: RestClient,
+  params: z.infer<typeof placeOrderPlanSchema>,
+) {
+  const need = completenessMessage("place_order_plan", params, [
+    { name: "accountId", label: "account ID" },
+    { name: "symbol", label: "symbol" },
+    { name: "side", label: "side", options: ["buy", "sell"] },
+    { name: "quantity", label: "quantity (lots)" },
+    { name: "orderType", label: "order type", options: ["Market", "Limit", "Stop", "StopLimit"] },
+    { name: "timeInForce", label: "time-in-force", options: ["IOC", "FOK", "GTC"] },
+  ]);
+  if (need) return { needMoreInfo: need };
+  const preview = await buildOrderPreview(client, {
+    action: "place",
+    accountId: params.accountId,
+    symbol: params.symbol,
+    side: params.side,
+    quantity: params.quantity,
+    orderType: params.orderType,
+    timeInForce: params.timeInForce,
+    limitPrice: params.limitPrice,
+    stopPrice: params.stopPrice,
+    stopLoss: params.stopLoss,
+    takeProfit: params.takeProfit,
+    marginCheck: params.marginCheck,
   });
+  const commitToken = issuePlan(params);
+  return { preview, commitToken, disclosure: PLACE_ORDER_DISCLOSURE };
+}
+
+export const placeOrderCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by place_order_plan"),
+});
+
+export async function placeOrderCommit(
+  client: RestClient,
+  params: z.infer<typeof placeOrderCommitSchema>,
+) {
+  return placeOrder(client, placeOrderSchema.parse(takeCommit(params.commitToken)));
+}
+
+export const closePositionPlanSchema = z.object({
+  accountId: z.number().optional().describe("Trading account ID"),
+  positionId: z.number().optional().describe("Position ID to close"),
+  quantity: z
+    .number()
+    .positive()
+    .optional()
+    .describe("Partial close volume in lots. Omit for full close"),
+});
+const CLOSE_POSITION_DISCLOSURE =
+  "You are confirming a LIVE position close on a client account via an AI assistant. Review the details, then call close_position_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function closePositionPlan(
+  client: RestClient,
+  params: z.infer<typeof closePositionPlanSchema>,
+) {
+  const need = completenessMessage("close_position_plan", params, [
+    { name: "accountId", label: "account ID" },
+    { name: "positionId", label: "position ID" },
+  ]);
+  if (need) return { needMoreInfo: need };
+  const preview = await buildOrderPreview(client, {
+    action: "close",
+    accountId: params.accountId,
+    positionId: params.positionId,
+    quantity: params.quantity,
+  });
+  const commitToken = issuePlan(params);
+  return { preview, commitToken, disclosure: CLOSE_POSITION_DISCLOSURE };
+}
+
+export const closePositionCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by close_position_plan"),
+});
+
+export async function closePositionCommit(
+  client: RestClient,
+  params: z.infer<typeof closePositionCommitSchema>,
+) {
+  return closePosition(client, closePositionSchema.parse(takeCommit(params.commitToken)));
+}
+
+export const closeByPlanSchema = z.object({
+  accountId: z.number().optional().describe("Trading account ID"),
+  positionId: z.number().optional().describe("Position ID to close"),
+  positionById: z.number().optional().describe("Opposite position ID to close against"),
+});
+const CLOSE_BY_DISCLOSURE =
+  "You are confirming a LIVE hedged close on a client account via an AI assistant. Review the details, then call close_by_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function closeByPlan(client: RestClient, params: z.infer<typeof closeByPlanSchema>) {
+  const need = completenessMessage("close_by_plan", params, [
+    { name: "accountId", label: "account ID" },
+    { name: "positionId", label: "position ID" },
+    { name: "positionById", label: "opposite position ID" },
+  ]);
+  if (need) return { needMoreInfo: need };
+  const preview = await buildOrderPreview(client, {
+    action: "close_by",
+    accountId: params.accountId,
+    positionId: params.positionId,
+    positionById: params.positionById,
+  });
+  const commitToken = issuePlan(params);
+  return { preview, commitToken, disclosure: CLOSE_BY_DISCLOSURE };
+}
+
+export const closeByCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by close_by_plan"),
+});
+
+export async function closeByCommit(
+  client: RestClient,
+  params: z.infer<typeof closeByCommitSchema>,
+) {
+  return closeBy(client, closeBySchema.parse(takeCommit(params.commitToken)));
+}
+
+export const closeAllPositionsPlanSchema = z.object({
+  accountId: z.number().optional().describe("Trading account ID"),
+  symbol: z.string().optional().describe("Only close positions for this symbol"),
+});
+const CLOSE_ALL_DISCLOSURE =
+  "You are confirming that an AI assistant will CLOSE ALL open positions on a client account (optionally filtered by symbol). This is high-impact — review carefully. Call close_all_positions_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function closeAllPositionsPlan(
+  client: RestClient,
+  params: z.infer<typeof closeAllPositionsPlanSchema>,
+) {
+  const need = completenessMessage("close_all_positions_plan", params, [
+    { name: "accountId", label: "account ID" },
+  ]);
+  if (need) return { needMoreInfo: need };
+  const preview = await buildOrderPreview(client, {
+    action: "close_all",
+    accountId: params.accountId,
+    symbol: params.symbol,
+  });
+  const commitToken = issuePlan(params);
+  return { preview, commitToken, disclosure: CLOSE_ALL_DISCLOSURE };
+}
+
+export const closeAllPositionsCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by close_all_positions_plan"),
+});
+
+export async function closeAllPositionsCommit(
+  client: RestClient,
+  params: z.infer<typeof closeAllPositionsCommitSchema>,
+) {
+  return closeAllPositions(client, closeAllPositionsSchema.parse(takeCommit(params.commitToken)));
 }
 
 // === FORCE DELETE ===

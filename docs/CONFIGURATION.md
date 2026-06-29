@@ -21,6 +21,7 @@ unset.
 | `YB_LOGIN` | Client mode with login/password | Yes, in that setup | Your trading account number. Must be a positive integer. |
 | `YB_PASSWORD` | Client mode with login/password | Yes, in that setup | Your trading account password. It is used only as the local signing secret for the sign-in request — it is never sent over the network, logged, or echoed. |
 | `YB_BROKER` | Client mode with login/password | No | Your broker's company name, sent along with the sign-in request. Only needed if your broker tells you to set it (for example, when one server hosts more than one broker). |
+| `YB_REQUEST_TIMEOUT_MS` | All modes | No | Per-request timeout for all REST calls, in milliseconds. Positive integer. Default `10000` (10s). On expiry the call fails with a stable `TIMEOUT` error; timeouts are never auto-retried (so an in-flight order placement is not re-sent). |
 
 ## Mode selection and inference
 
@@ -53,9 +54,10 @@ Two notes worth remembering:
 The examples below use placeholders — replace `<your-server-host>:<port>`, `<api-key>`,
 `<secret-key>`, `<login>`, `<password>`, and `<broker-company-name>` with your own values.
 
-Requirements: **Node.js 18+** and **git**. On the first launch, npx fetches and builds the
-pinned release from GitHub then caches it — subsequent starts are instant. When a newer release
-tag is available, update the `#v1.1.1` pin in your config to that tag.
+Requirements: **Node.js 18+** and **git**. On the first launch, npx fetches and builds the latest
+code from the `main` branch then caches it — subsequent starts are instant. Because npx caches by
+spec, it may keep running the cached copy until you clear the npx cache, which forces a refetch of the newest `main`.
+Prefer a fixed, reproducible version? See [Pinning a version](#pinning-a-version) below.
 
 ### Setup 1: Admin mode (broker administrators)
 
@@ -66,7 +68,7 @@ tag is available, update the `#v1.1.1` pin in your config to that tag.
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "admin",
@@ -86,7 +88,7 @@ claude mcp add trade-server \
   --env YB_MODE=admin \
   --env YB_API_KEY=<api-key> \
   --env YB_SECRET_KEY=<secret-key> \
-  -- npx -y github:yourbourse/trade-server-mcp#v1.1.1
+  -- npx -y github:yourbourse/trade-server-mcp
 ```
 
 **Claude Code** — or declare it in your project's `.mcp.json`:
@@ -96,7 +98,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "admin",
@@ -117,7 +119,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "client",
@@ -140,7 +142,7 @@ claude mcp add trade-server \
   --env YB_MODE=client \
   --env YB_LOGIN=<login> \
   --env YB_PASSWORD=<password> \
-  -- npx -y github:yourbourse/trade-server-mcp#v1.1.1
+  -- npx -y github:yourbourse/trade-server-mcp
 ```
 
 **Claude Code** — or declare it in your project's `.mcp.json`:
@@ -150,7 +152,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "client",
@@ -173,7 +175,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "client",
@@ -193,7 +195,7 @@ claude mcp add trade-server \
   --env YB_MODE=client \
   --env YB_API_KEY=<api-key> \
   --env YB_SECRET_KEY=<secret-key> \
-  -- npx -y github:yourbourse/trade-server-mcp#v1.1.1
+  -- npx -y github:yourbourse/trade-server-mcp
 ```
 
 **Claude Code** — or declare it in your project's `.mcp.json`:
@@ -203,7 +205,7 @@ claude mcp add trade-server \
   "mcpServers": {
     "trade-server": {
       "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
       "env": {
         "YB_BASE_URL": "https://<your-server-host>:<port>",
         "YB_MODE": "client",
@@ -243,10 +245,26 @@ claude mcp add trade-server \
 ### Other MCP clients
 
 Any MCP-compatible client that supports stdio servers can run the Trade Server MCP. Configure it
-to launch `npx -y github:yourbourse/trade-server-mcp#v1.1.1` over the **stdio** transport, with
+to launch `npx -y github:yourbourse/trade-server-mcp` over the **stdio** transport, with
 the environment variables from whichever setup above matches your situation. There is no HTTP/SSE
 endpoint — the server communicates exclusively over stdin/stdout, and writes its log lines to
 stderr.
+
+### Pinning a version
+
+By default the install follows the **`main` branch** — `github:yourbourse/trade-server-mcp` — i.e. the
+latest code, a mutable target. If you need a **reproducible, immutable build** (for example a
+controlled deployment where you decide exactly when to upgrade), pin a specific release **tag**
+instead:
+
+```json
+"args": ["-y", "github:yourbourse/trade-server-mcp#v2.0.0"]
+```
+
+A tag is stable in practice, but tags can technically be re-pointed; for a guarantee that the code can
+never change, pin a **commit SHA** instead (`github:yourbourse/trade-server-mcp#<commit-sha>`). See
+[Security](./SECURITY.md) for the supply-chain rationale behind distributing from GitHub rather than
+the npm registry.
 
 ## Startup error messages
 

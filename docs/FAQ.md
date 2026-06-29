@@ -23,8 +23,9 @@ side by side.
 
 Deliberately. The May 2026 wave of npm supply-chain attacks made "install from the registry"
 a real risk for software that holds trading credentials, so the server is distributed
-straight from this GitHub repository instead: run it with npx pinned to a release tag
-(immutable — there is no registry account to hijack), or clone and build from source.
+straight from this GitHub repository instead: run it with npx (the `main` branch by default, or a
+pinned tag/commit for a reproducible build — either way there is no registry account to hijack), or
+clone and build from source.
 The reasoning is laid out in [Security → Supply-chain stance](./SECURITY.md#supply-chain-stance).
 
 ## Which Trade Server version do I need?
@@ -57,6 +58,17 @@ never transmitted over the network, never logged, and never echoed into the conv
 Nothing is ever persisted to disk; the guarantees are spelled out in
 [Security](./SECURITY.md#credential-handling-guarantees).
 
+## How do I place or close a trade?
+
+In two steps — preview, then confirm. Anything that moves money (placing an order, closing a
+position, a hedged close, closing everything) is split into a `*_plan` tool and a `*_commit`
+tool. When you ask to trade, the AI calls the plan tool first: it validates the request and
+shows you a plain-language summary, the live quote, and your free margin **without sending
+anything to the market**, plus a single-use confirmation token that lasts five minutes. You
+review it; once you confirm, the AI calls the commit tool with that token to actually place the
+order. If your instruction was missing a detail (say, no order type), the plan step asks for
+exactly what's needed. Nothing executes until you commit — there is no single-step trade path.
+
 ## Why did my market order not retry after a network error?
 
 Because retrying could fill you twice. A dropped connection does not prove the server never
@@ -78,7 +90,7 @@ netting account, use `close_position`. See
 
 ## How many tools are there, and why do the two modes differ?
 
-Admin mode exposes **38 tools and 4 resources**; client mode exposes **26 tools and
+Admin mode exposes **42 tools and 4 resources**; client mode exposes **30 tools and
 1 resource**. The difference is the scope each set of credentials should carry: admin mode
 adds server-wide capabilities (other accounts, groups, routing rules, cash transfers,
 liquidity connectors), while client mode is deliberately limited to what *you* can do with
@@ -103,7 +115,7 @@ unchanged.
 
 Yes. The server speaks standard MCP over **stdio**, so any MCP-compatible client that can
 launch a stdio server works: configure it to run
-`npx -y github:yourbourse/trade-server-mcp#v1.1.1` (or `node <path-to-repo>/dist/index.js`
+`npx -y github:yourbourse/trade-server-mcp` (or `node <path-to-repo>/dist/index.js`
 if you cloned the repo) with the environment variables for your mode. See
 [Configuration → Other MCP clients](./CONFIGURATION.md#other-mcp-clients).
 

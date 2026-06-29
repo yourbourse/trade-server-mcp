@@ -2,8 +2,8 @@
 
 Admin mode is for the people who **run** the Trade Server: brokers and their operations teams.
 Where a trader sees one account, admin mode sees the whole server — every account, every
-group, every routing rule, every liquidity connector. It exposes **38 tools and 4 MCP
-resources** (see the [Tools Reference](./TOOLS_REFERENCE.md#admin-mode-38-tools) for every
+group, every routing rule, every liquidity connector. It exposes **42 tools and 4 MCP
+resources** (see the [Tools Reference](./TOOLS_REFERENCE.md#admin-mode-42-tools) for every
 parameter and example).
 
 What that means in practice:
@@ -103,6 +103,16 @@ Review past movements with `get_transfer_history`.
   top (see [Managing order routing](#managing-order-routing)). If an edit is rejected this
   way, re-read the object and apply your change again.
 
+- **Money-movers are confirm-before-execute.** Placing an order, closing a position, a hedged
+  close, and closing everything are each split into a **preview** step and a **commit** step. The
+  AI calls the `*_plan` tool first — it validates the request (admin money-movers always need the
+  target `accountId`; `place_order_plan` also accepts the optional `marginCheck`) and returns a
+  plain-language order summary naming the target account, plus a single-use `commitToken` good for
+  five minutes, **without touching the market**. After you review the preview and confirm, the AI
+  calls the matching `*_commit` tool with that token to execute. If a required detail is missing,
+  the plan step says exactly what's needed rather than guessing — and there is no single-step,
+  un-confirmed way to move money on an account.
+
 - **Order placement is never retried on connection errors.** Like client mode, admin-mode
   order placements opt out of transport-level retries so a dropped connection can never turn
   into a duplicate fill. Read and modify calls retry once on a connection failure. Details in
@@ -110,7 +120,7 @@ Review past movements with `get_transfer_history`.
 
 ## Where next
 
-- [Tools Reference](./TOOLS_REFERENCE.md) — all 38 admin tools with parameters and examples
+- [Tools Reference](./TOOLS_REFERENCE.md) — all 42 admin tools with parameters and examples
 - [Configuration](./CONFIGURATION.md) — admin credential setup
 - [Authentication](./AUTHENTICATION.md) — request signing with the admin key pair
 - [Security](./SECURITY.md) — key-handling guarantees and recommendations

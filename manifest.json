@@ -1,0 +1,51 @@
+{
+  "manifest_version": "0.3",
+  "name": "trade-server-mcp",
+  "version": "2.0.0",
+  "description": "Trade on a YourBourse Trade Server from Claude — as a trader.",
+  "author": { "name": "YourBourse", "url": "https://yourbourse.com" },
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/index.js"],
+      "env": {
+        "YB_BASE_URL": "${user_config.yb_base_url}",
+        "YB_MODE": "client",
+        "YB_LOGIN": "${user_config.yb_login}",
+        "YB_PASSWORD": "${user_config.yb_password}",
+        "YB_BROKER": "${user_config.yb_broker}"
+      }
+    }
+  },
+  "user_config": {
+    "yb_base_url": {
+      "type": "string",
+      "title": "Server address",
+      "description": "Your Trade Server's full web address, from your broker — include https:// and no trailing slash (e.g. https://your-server.example.com, sometimes with a port like :32236).",
+      "required": true
+    },
+    "yb_login": {
+      "type": "string",
+      "title": "Account login",
+      "description": "Your trading account login — digits only (a positive integer).",
+      "required": true
+    },
+    "yb_password": {
+      "type": "string",
+      "title": "Password",
+      "description": "Your account password. Stored securely in your operating system's keychain.",
+      "sensitive": true,
+      "required": true
+    },
+    "yb_broker": {
+      "type": "string",
+      "title": "Broker name (optional)",
+      "description": "Leave blank unless your broker told you to set it.",
+      "required": false
+    }
+  },
+  "compatibility": { "runtimes": { "node": ">=18.0.0" } }
+}

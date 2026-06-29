@@ -44,7 +44,35 @@ export class RestClient {
   constructor(
     private baseUrl: string,
     private provider: CredentialsProvider,
+    private timeoutMs: number = 10_000,
   ) {}
+
+  /** fetch with a per-request deadline applied via AbortSignal.timeout. */
+  private fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+    return fetch(url, { ...init, signal: AbortSignal.timeout(this.timeoutMs) });
+  }
+
+  /** A fired AbortSignal.timeout rejects with an Error named "TimeoutError". */
+  private isTimeout(err: unknown): boolean {
+    return err instanceof Error && err.name === "TimeoutError";
+  }
+
+  /**
+   * The stable ApiError a fired request timeout maps to (errorCode "TIMEOUT",
+   * status 408) so it is reported consistently AND — being an ApiError — is never
+   * auto-retried by doSend's transport loop (a timeout is not proof of non-delivery;
+   * retrying could double-fill orders). The deadline can fire during the fetch OR
+   * while reading the response body (res.json()/res.text()), so every request stage
+   * routes its errors through this — see the try/catch in doGet/doSend/doDelete.
+   */
+  private timeoutApiError(method: string, path: string): ApiError {
+    return new ApiError(
+      method,
+      path,
+      408,
+      JSON.stringify({ e: "TIMEOUT", message: `request timed out after ${this.timeoutMs}ms` }),
+    );
+  }
 
   private buildHeaders(method: string, body?: string): Record<string, string> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -93,23 +121,28 @@ export class RestClient {
       headers["If-None-Match"] = etag;
     }
 
-    const res = await fetch(url, { method: "GET", headers });
+    try {
+      const res = await this.fetchWithTimeout(url, { method: "GET", headers });
 
-    if (res.status === 304) {
-      throw new Error("Not modified (304)");
+      if (res.status === 304) {
+        throw new Error("Not modified (304)");
+      }
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new ApiError("GET", path, res.status, text);
+      }
+
+      const newEtag = res.headers.get("ETag");
+      if (newEtag) {
+        this.etags.set(path, newEtag);
+      }
+
+      return (await res.json()) as T;
+    } catch (err) {
+      if (this.isTimeout(err)) throw this.timeoutApiError("GET", path);
+      throw err;
     }
-
-    if (!res.ok) {
-      const text = await res.text();
-      throw new ApiError("GET", path, res.status, text);
-    }
-
-    const newEtag = res.headers.get("ETag");
-    if (newEtag) {
-      this.etags.set(path, newEtag);
-    }
-
-    return res.json() as Promise<T>;
   }
 
   private async doSend<T>(
@@ -137,7 +170,11 @@ export class RestClient {
         // An empty bodyStr means "no body at all": some endpoints (e.g. the
         // client /account/state) reject any payload — even {} — but accept a
         // body-less request signed over the empty string.
-        const res = await fetch(url, { method, headers, body: bodyStr || undefined });
+        const res = await this.fetchWithTimeout(url, {
+          method,
+          headers,
+          body: bodyStr || undefined,
+        });
 
         if (!res.ok) {
           const text = await res.text();
@@ -153,6 +190,9 @@ export class RestClient {
         if (!text) return {} as T;
         return JSON.parse(text) as T;
       } catch (err) {
+        // A timeout can fire during the fetch OR the res.text() body read; map it
+        // to the stable TIMEOUT ApiError (which the line below then refuses to retry).
+        if (this.isTimeout(err)) throw this.timeoutApiError(method, path);
         if (err instanceof ApiError) throw err; // don't swallow HTTP errors
         const msg = err instanceof Error ? err.message : "";
         // Only retry on connection-level failures, not HTTP errors
@@ -179,20 +219,25 @@ export class RestClient {
       headers["If-Match"] = etag;
     }
 
-    const res = await fetch(url, {
-      method: "DELETE",
-      headers,
-      body: bodyStr || undefined,
-    });
+    try {
+      const res = await this.fetchWithTimeout(url, {
+        method: "DELETE",
+        headers,
+        body: bodyStr || undefined,
+      });
 
-    if (!res.ok) {
+      if (!res.ok) {
+        const text = await res.text();
+        throw new ApiError("DELETE", path, res.status, text);
+      }
+
       const text = await res.text();
-      throw new ApiError("DELETE", path, res.status, text);
+      if (!text) return {} as T;
+      return JSON.parse(text) as T;
+    } catch (err) {
+      if (this.isTimeout(err)) throw this.timeoutApiError("DELETE", path);
+      throw err;
     }
-
-    const text = await res.text();
-    if (!text) return {} as T;
-    return JSON.parse(text) as T;
   }
 
   async get<T = unknown>(path: string): Promise<T> {

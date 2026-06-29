@@ -2,6 +2,8 @@ import { z } from "zod";
 import { RestClient } from "../../rest-client.js";
 import { WsClient } from "../../ws-client.js";
 import * as ti from "technicalindicators";
+import { mapWithConcurrency } from "../../util/concurrency.js";
+import { QUOTES_MAX_SYMBOLS, QUOTES_CONCURRENCY } from "../../constants.js";
 
 export const getQuoteSchema = z.object({
   symbol: z.string().describe("Symbol name, e.g. EURUSD"),
@@ -135,7 +137,11 @@ export async function getConversionRate(
 // === MULTI-SYMBOL QUOTES ===
 
 export const getQuotesSchema = z.object({
-  symbols: z.array(z.string()).min(1).describe("Array of symbol names, e.g. ['EURUSD', 'GBPUSD']"),
+  symbols: z
+    .array(z.string())
+    .min(1)
+    .max(QUOTES_MAX_SYMBOLS)
+    .describe(`Array of symbol names, e.g. ['EURUSD', 'GBPUSD'] (max ${QUOTES_MAX_SYMBOLS})`),
   groupId: z.number().optional().describe("Group ID (default 1)"),
 });
 
@@ -146,32 +152,30 @@ export async function getQuotes(wsClient: WsClient, params: z.infer<typeof getQu
 
   const groupId = params.groupId ?? 1;
 
-  // Subscribe to all symbols in parallel
-  const results = await Promise.all(
-    params.symbols.map(async (symbol) => {
-      try {
-        const data = await wsClient.getSnapshot(
-          "L1",
-          {
-            s: symbol,
-            g: groupId,
-            streaming: true,
-          },
-          { timeoutMs: 3000 },
-        );
+  // Subscribe to symbols with bounded concurrency (caps fan-out — Issue #8)
+  const results = await mapWithConcurrency(params.symbols, QUOTES_CONCURRENCY, async (symbol) => {
+    try {
+      const data = await wsClient.getSnapshot(
+        "L1",
+        {
+          s: symbol,
+          g: groupId,
+          streaming: true,
+        },
+        { timeoutMs: 3000 },
+      );
 
-        // Extract quote data
-        const quotes: unknown[] = [];
-        for (const msg of data) {
-          const m = msg as { d?: unknown[] };
-          if (m.d) quotes.push(...m.d);
-        }
-        return { symbol, quote: quotes.length > 0 ? quotes[quotes.length - 1] : null };
-      } catch (e) {
-        return { symbol, quote: null, error: e instanceof Error ? e.message : String(e) };
+      // Extract quote data
+      const quotes: unknown[] = [];
+      for (const msg of data) {
+        const m = msg as { d?: unknown[] };
+        if (m.d) quotes.push(...m.d);
       }
-    }),
-  );
+      return { symbol, quote: quotes.length > 0 ? quotes[quotes.length - 1] : null };
+    } catch (e) {
+      return { symbol, quote: null, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 
   return results;
 }

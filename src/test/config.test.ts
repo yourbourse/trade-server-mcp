@@ -75,3 +75,45 @@ test("whitespace-only YB_BASE_URL throws with variable name in message", () => {
 test("only YB_PASSWORD set (no YB_LOGIN) throws requiring YB_LOGIN", () => {
   assert.throws(() => parseConfig({ ...BASE, YB_PASSWORD: "pw" }), /requires YB_LOGIN/);
 });
+
+test("an unsubstituted ${...} placeholder (blank optional .mcpb field) is treated as unset", () => {
+  // Claude Desktop injects the literal `${user_config.yb_broker}` when the optional Broker
+  // field is left blank; it must NOT become a real broker value (which the server rejects).
+  const c = parseConfig({
+    ...BASE,
+    YB_LOGIN: "100",
+    YB_PASSWORD: "pw",
+    YB_BROKER: "${user_config.yb_broker}",
+  });
+  assert.ok(c.mode === "client" && c.auth.style === "login" && c.auth.broker === undefined);
+});
+
+test("requestTimeoutMs defaults to 10000 when unset", () => {
+  const c = parseConfig({ ...BASE, YB_API_KEY: "k", YB_SECRET_KEY: "s" });
+  assert.equal(c.requestTimeoutMs, 10000);
+});
+
+test("YB_REQUEST_TIMEOUT_MS custom value is parsed", () => {
+  const c = parseConfig({
+    ...BASE,
+    YB_API_KEY: "k",
+    YB_SECRET_KEY: "s",
+    YB_REQUEST_TIMEOUT_MS: "3000",
+  });
+  assert.equal(c.requestTimeoutMs, 3000);
+});
+
+test("non-numeric YB_REQUEST_TIMEOUT_MS throws naming the variable", () => {
+  assert.throws(
+    () =>
+      parseConfig({ ...BASE, YB_API_KEY: "k", YB_SECRET_KEY: "s", YB_REQUEST_TIMEOUT_MS: "abc" }),
+    /YB_REQUEST_TIMEOUT_MS/,
+  );
+});
+
+test("zero or negative YB_REQUEST_TIMEOUT_MS throws", () => {
+  assert.throws(
+    () => parseConfig({ ...BASE, YB_API_KEY: "k", YB_SECRET_KEY: "s", YB_REQUEST_TIMEOUT_MS: "0" }),
+    /positive integer/,
+  );
+});

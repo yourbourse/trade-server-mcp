@@ -1,0 +1,34 @@
+# Files excluded from the packed .mcpb bundle (keeps the artifact lean).
+# Runtime needs only compiled JS + production deps; everything below is dev/test/docs cruft.
+
+# Our own compiled tests (tsc emits src/test -> dist/test)
+dist/test/
+
+# Lockfiles aren't needed at runtime (incl. npm's internal node_modules/.package-lock.json)
+**/.package-lock.json
+**/package-lock.json
+
+# Dependency test suites and fixtures
+**/test/
+**/tests/
+**/__tests__/
+**/*.test.js
+**/*.spec.js
+
+# TypeScript declarations and source maps (not used at runtime)
+**/*.d.ts
+**/*.d.cts
+**/*.d.mts
+**/*.map
+**/@types/
+
+# Bundled example apps and noisy docs shipped inside dependencies.
+# NOTE: do NOT blanket-ignore *.md — many deps ship their license/notice as LICENSE.md / NOTICE.md,
+# which must be kept for license compliance. Only strip common non-license docs.
+**/examples/
+**/README.md
+**/readme.md
+**/CHANGELOG.md
+**/CHANGES.md
+**/HISTORY.md
+**/.github/

@@ -187,3 +187,93 @@ test("PUT retries once on connection failure then succeeds", async () => {
   assert.deepEqual(res, { ok: true });
   assert.equal(captured.length, 2);
 });
+
+test("a fired timeout maps to ApiError TIMEOUT / 408", async () => {
+  globalThis.fetch = (async () => {
+    throw Object.assign(new Error("The operation was aborted due to timeout"), {
+      name: "TimeoutError",
+    });
+  }) as any;
+  const client = new RestClient("http://ts.local", new StaticCredentials("K", "S"));
+  await assert.rejects(
+    () => client.get("/now"),
+    (err: unknown) =>
+      err instanceof ApiError && err.errorCode === "TIMEOUT" && err.statusCode === 408,
+  );
+});
+
+test("an order-placement timeout is NOT retried (single fetch call)", async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    throw Object.assign(new Error("aborted"), { name: "TimeoutError" });
+  }) as any;
+  const client = new RestClient("http://ts.local", new StaticCredentials("K", "S"));
+  await assert.rejects(
+    () => client.post("/order", { x: 1 }, { retryOnConnectionError: false }),
+    (err: unknown) => err instanceof ApiError && err.errorCode === "TIMEOUT",
+  );
+  assert.equal(calls, 1);
+});
+
+test("timeout error message reflects the configured timeout", async () => {
+  globalThis.fetch = (async () => {
+    throw Object.assign(new Error("aborted"), { name: "TimeoutError" });
+  }) as any;
+  const client = new RestClient("http://ts.local", new StaticCredentials("K", "S"), 2500);
+  await assert.rejects(
+    () => client.get("/now"),
+    (err: unknown) => err instanceof ApiError && /2500ms/.test(err.detail),
+  );
+});
+
+test("fetch is invoked with an AbortSignal (deadline wired)", async () => {
+  let sawSignal: unknown;
+  globalThis.fetch = (async (_url: any, init: any) => {
+    sawSignal = init?.signal;
+    return new Response("{}", { status: 200 });
+  }) as any;
+  const client = new RestClient("http://ts.local", new StaticCredentials("K", "S"));
+  await client.get("/now");
+  assert.ok(sawSignal instanceof AbortSignal);
+});
+
+// A timeout can fire AFTER headers arrive, while the body is being read
+// (res.json()/res.text()) — that stage is outside fetchWithTimeout, so the
+// per-method try/catch must still map it to the stable TIMEOUT ApiError.
+function bodyTimeoutResponse() {
+  const boom = () => {
+    throw Object.assign(new Error("aborted"), { name: "TimeoutError" });
+  };
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: () => null },
+    json: async () => boom(),
+    text: async () => boom(),
+  };
+}
+
+test("GET timeout during body read maps to ApiError TIMEOUT / 408", async () => {
+  globalThis.fetch = (async () => bodyTimeoutResponse()) as any;
+  const client = new RestClient("http://ts.local", new StaticCredentials("K", "S"));
+  await assert.rejects(
+    () => client.get("/now"),
+    (err: unknown) =>
+      err instanceof ApiError && err.errorCode === "TIMEOUT" && err.statusCode === 408,
+  );
+});
+
+test("POST timeout during body read maps to TIMEOUT and is NOT retried", async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    return bodyTimeoutResponse();
+  }) as any;
+  const client = new RestClient("http://ts.local", new StaticCredentials("K", "S"));
+  await assert.rejects(
+    () => client.post("/order", { x: 1 }),
+    (err: unknown) => err instanceof ApiError && err.errorCode === "TIMEOUT",
+  );
+  assert.equal(calls, 1);
+});

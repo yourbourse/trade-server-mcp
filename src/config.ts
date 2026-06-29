@@ -1,4 +1,4 @@
-export type ServerConfig =
+export type ServerConfig = (
   | { mode: "admin"; baseUrl: string; apiKey: string; secretKey: string }
   | {
       mode: "client";
@@ -6,23 +6,41 @@ export type ServerConfig =
       auth:
         | { style: "login"; login: number; password: string; broker?: string }
         | { style: "token"; apiKey: string; secretKey: string };
-    };
+    }
+) & { requestTimeoutMs: number };
 
 const HELP = `Trade Server MCP configuration:
   Admin mode  (brokers): YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY [+ YB_MODE=admin] (set YB_MODE explicitly if mixing credential variables)
   Client mode (traders): YB_BASE_URL + YB_LOGIN + YB_PASSWORD [+ YB_BROKER] + YB_MODE=client
-  Client mode (token):   YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY + YB_MODE=client`;
+  Client mode (token):   YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY + YB_MODE=client
+  Optional (all modes):  YB_REQUEST_TIMEOUT_MS (per-request timeout in ms; positive integer; default 10000)`;
 
 export function parseConfig(env: Record<string, string | undefined>): ServerConfig {
   const v = (name: string) => {
     const raw = env[name];
     if (raw === undefined) return undefined;
     const t = raw.trim();
-    return t === "" ? undefined : t;
+    // An unsubstituted manifest placeholder (e.g. "${user_config.yb_broker}", which Claude
+    // Desktop injects for an empty optional .mcpb field) is treated as unset — otherwise the
+    // literal string is sent as a real value and the server rejects the request.
+    if (t === "" || /^\$\{[^}]*\}$/.test(t)) return undefined;
+    return t;
   };
 
   const baseUrl = v("YB_BASE_URL");
   if (!baseUrl) throw new Error(`Missing YB_BASE_URL.\n${HELP}`);
+
+  const timeout_raw = v("YB_REQUEST_TIMEOUT_MS");
+  let requestTimeoutMs = 10_000;
+  if (timeout_raw !== undefined) {
+    const n = Number(timeout_raw);
+    if (!Number.isInteger(n) || n <= 0) {
+      throw new Error(
+        `YB_REQUEST_TIMEOUT_MS must be a positive integer (milliseconds), got "${timeout_raw}".\n${HELP}`,
+      );
+    }
+    requestTimeoutMs = n;
+  }
 
   const mode_raw = v("YB_MODE");
   const login_raw = v("YB_LOGIN");
@@ -38,7 +56,13 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
   if (mode === "admin") {
     if (!apiKey_raw) throw new Error(`Admin mode requires YB_API_KEY.\n${HELP}`);
     if (!secretKey_raw) throw new Error(`Admin mode requires YB_SECRET_KEY.\n${HELP}`);
-    return { mode: "admin", baseUrl, apiKey: apiKey_raw, secretKey: secretKey_raw };
+    return {
+      mode: "admin",
+      baseUrl,
+      apiKey: apiKey_raw,
+      secretKey: secretKey_raw,
+      requestTimeoutMs,
+    };
   }
 
   if (mode === "client") {
@@ -58,6 +82,7 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
         mode: "client",
         baseUrl,
         auth: { style: "login", login, password: password_raw, broker: broker_raw },
+        requestTimeoutMs,
       };
     }
     if (hasKeys) {
@@ -68,6 +93,7 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
         mode: "client",
         baseUrl,
         auth: { style: "token", apiKey: apiKey_raw, secretKey: secretKey_raw },
+        requestTimeoutMs,
       };
     }
     throw new Error(`Client mode requires credentials.\n${HELP}`);

@@ -9,6 +9,12 @@ every call shown is executable as written (substitute your own symbols, IDs, and
 Your AI decides the wording of its answers; what's fixed is the tools and the data they
 return.
 
+One pattern recurs in the trading examples: anything that moves money — placing an order,
+closing a position, a hedged close, closing everything — is **confirm-before-execute**. Your AI
+calls the `*_plan` tool first to preview the order (and get a single-use `commitToken`), shows
+you what it's about to do, and only calls the matching `*_commit` tool with that token after you
+confirm. **Nothing reaches the market until you commit.**
+
 ---
 
 ## 1. Account check-in
@@ -32,7 +38,7 @@ price and a take profit about 50 pips above."*
 **Tool calls:**
 
 1. `get_quote` — `{ "symbol": "EURUSD" }` — to anchor the SL/TP math on the live price.
-2. `place_order` —
+2. `place_order_plan` —
 
    ```json
    {
@@ -46,13 +52,21 @@ price and a take profit about 50 pips above."*
    }
    ```
 
-   (SL/TP values computed from the quote it just fetched.)
+   (SL/TP values computed from the quote it just fetched.) **Nothing is sent yet** — this returns
+   a preview (plain-language summary, the live quote, your free margin) and a single-use
+   `commitToken`.
 
-**What you get back:** the quote first (current bid/ask), then the order result with the
-order ID and execution details. Note the safety property: if the connection drops mid-request,
-the order is **not** automatically retried — your AI will tell you the call failed and you
-should check `get_working_orders` / `get_open_positions` before sending it again (see
-[Client Mode](./CLIENT_MODE.md#safety-behaviors-you-should-know-about)).
+3. *You review the preview and confirm.* Your AI shows you the order it's about to place; you
+   say something like *"yes, go ahead."*
+4. `place_order_commit` — `{ "commitToken": "plan_3f8e1c2a-9b4d-4e6f-8a1b-2c3d4e5f6a7b" }` — the token from step 2. This is
+   the step that actually places the order.
+
+**What you get back:** the quote first, then the preview to confirm against, and only after your
+confirmation the order result with the order ID and execution details. Two safety properties to
+note: **nothing reaches the market until you commit** (the plan step is read-only), and if the
+connection drops mid-commit, the order is **not** automatically retried — your AI will tell you
+the call failed and you should check `get_working_orders` / `get_open_positions` before sending
+it again (see [Client Mode](./CLIENT_MODE.md#safety-behaviors-you-should-know-about)).
 
 ## 3. Scale out of a winner
 
@@ -61,11 +75,14 @@ should check `get_working_orders` / `get_open_positions` before sending it again
 **Tool calls:**
 
 1. `get_open_positions` — `{ "symbol": "EURUSD" }` — to find the position ID and its size.
-2. `close_position` — `{ "positionId": 67890, "quantity": 0.05 }` — half of the 0.1-lot
-   position found in step 1.
+2. `close_position_plan` — `{ "positionId": 67890, "quantity": 0.05 }` — half of the 0.1-lot
+   position found in step 1. Returns a preview and a `commitToken`; **nothing is closed yet**.
+3. *You confirm the partial close.*
+4. `close_position_commit` — `{ "commitToken": "plan_7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f" }` — executes the close.
 
 **What you get back:** the list of matching positions with IDs, sizes, open prices and current
-P/L, then the partial-close result. The remaining half stays open with its original SL/TP.
+P/L, then a preview of the partial close to confirm, and only after you confirm the close result.
+The remaining half stays open with its original SL/TP.
 
 ## 4. Flatten everything
 
@@ -73,14 +90,19 @@ P/L, then the partial-close result. The remaining half stays open with its origi
 
 **Tool calls:**
 
-1. `close_all_positions` — `{}`
-2. `cancel_all_orders` — `{}`
+1. `close_all_positions_plan` — `{}` — previews the flatten (it's high-impact) and returns a
+   `commitToken`; **nothing is closed yet**.
+2. *You confirm the flatten.*
+3. `close_all_positions_commit` — `{ "commitToken": "plan_b4c5d6e7-8f9a-4b1c-9d3e-4f5a6b7c8d9e" }` — closes every position.
+4. `cancel_all_orders` — `{}` — cancelling working orders is not a money-mover, so it runs in one
+   step (no preview).
 
-**What you get back:** a count of closed positions from the first call and a count of
-cancelled orders from the second. Both are bulk tools that report **per-item** outcomes, so if
-one position fails to close (e.g. the market is closed for that symbol), you're told exactly
-which one — the others still went through. Add `"symbol": "EURUSD"` to either call to flatten
-just one instrument.
+**What you get back:** a preview of what closing everything will do, then — after you confirm —
+a count of closed positions, and finally a count of cancelled orders. The commit and
+`cancel_all_orders` are both bulk tools that report **per-item** outcomes, so if one position
+fails to close (e.g. the market is closed for that symbol), you're told exactly which one — the
+others still went through. Add `"symbol": "EURUSD"` to the plan call (or to `cancel_all_orders`)
+to flatten just one instrument.
 
 ## 5. Morning briefing
 

@@ -16,8 +16,12 @@ export class WsClient {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnecting = false;
+  private isShuttingDown = false;
 
-  constructor(config: AuthConfig) {
+  constructor(
+    config: AuthConfig,
+    private wsFactory: (url: string) => WebSocket = (url) => new WebSocket(url),
+  ) {
     this.config = config;
   }
 
@@ -27,12 +31,13 @@ export class WsClient {
 
   async connect(): Promise<void> {
     if (this.connected) return;
+    this.isShuttingDown = false;
 
     const wsUrl = this.config.baseUrl.replace("https://", "wss://").replace("http://", "ws://");
     const url = `${wsUrl}/ws/v1`;
 
     return new Promise((resolve, reject) => {
-      this.ws = new WebSocket(url);
+      this.ws = this.wsFactory(url);
 
       this.ws.on("open", () => {
         this.connected = true;
@@ -47,6 +52,8 @@ export class WsClient {
       this.ws.on("close", () => {
         this.connected = false;
         this.stopPingPong();
+        this.rejectPending(new Error("WebSocket closed"));
+        if (this.isShuttingDown) return; // explicit shutdown is terminal
         this.attemptReconnect();
       });
 
@@ -68,16 +75,24 @@ export class WsClient {
   }
 
   private async attemptReconnect(): Promise<void> {
+    if (this.isShuttingDown) return;
     if (this.reconnecting || this.reconnectAttempts >= this.maxReconnectAttempts) return;
     this.reconnecting = true;
 
-    while (this.reconnectAttempts < this.maxReconnectAttempts && !this.connected) {
+    while (
+      this.reconnectAttempts < this.maxReconnectAttempts &&
+      !this.connected &&
+      !this.isShuttingDown
+    ) {
       this.reconnectAttempts++;
       const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 16000);
       console.error(
         `WS reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`,
       );
       await new Promise((r) => setTimeout(r, delay));
+      // disconnect() may have flipped isShuttingDown during the backoff above; a terminal
+      // shutdown must not be undone by connect() (which resets the flag and reopens the socket).
+      if (this.isShuttingDown) break;
 
       try {
         await this.connect();
@@ -91,12 +106,21 @@ export class WsClient {
   }
 
   disconnect() {
+    this.isShuttingDown = true;
     this.stopPingPong();
+    this.rejectPending(new Error("WebSocket disconnected"));
+    this.subscriptionHandlers.clear();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
       this.connected = false;
     }
+  }
+
+  /** Reject and clear all in-flight requests — they cannot complete on a closed socket. */
+  private rejectPending(err: Error) {
+    for (const { reject } of this.pendingRequests.values()) reject(err);
+    this.pendingRequests.clear();
   }
 
   private startPingPong() {
@@ -175,7 +199,7 @@ export class WsClient {
 
     await this.ensureConnected();
 
-    return new Promise(async (resolve) => {
+    return new Promise<unknown[]>(async (resolve, reject) => {
       const timer = setTimeout(() => {
         this.subscriptionHandlers.delete(reqId);
         this.unsubscribe(channel, payload, reqId);
@@ -188,10 +212,10 @@ export class WsClient {
 
       try {
         await this.subscribe(channel, payload, reqId);
-      } catch {
+      } catch (err) {
         clearTimeout(timer);
         this.subscriptionHandlers.delete(reqId);
-        resolve(results);
+        reject(err instanceof Error ? err : new Error(String(err)));
         return;
       }
 

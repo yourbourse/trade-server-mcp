@@ -5,3 +5,7 @@ dist/
 mcp-config.json
 .DS_Store
 Thumbs.db
+
+# MCPB (Claude Desktop Extension) build artifacts
+*.mcpb
+mcpb-build/

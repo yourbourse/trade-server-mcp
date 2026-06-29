@@ -20,6 +20,46 @@ beforeEach(() => {
 
 const client = () => new RestClient("http://ts", new StaticCredentials("K", "S"));
 
+test("closePositionPlanSchema rejects non-positive quantity (Copilot #5)", () => {
+  assert.throws(() => t.closePositionPlanSchema.parse({ positionId: 1, quantity: 0 }));
+  assert.throws(() => t.closePositionPlanSchema.parse({ positionId: 1, quantity: -1 }));
+  assert.doesNotThrow(() => t.closePositionPlanSchema.parse({ positionId: 1, quantity: 0.1 }));
+  assert.doesNotThrow(() => t.closePositionPlanSchema.parse({ positionId: 1 })); // full close
+});
+
+test("closePositionSchema (commit) also rejects non-positive quantity (Copilot #5)", () => {
+  assert.throws(() => t.closePositionSchema.parse({ positionId: 1, quantity: 0 }));
+  assert.throws(() => t.closePositionSchema.parse({ positionId: 1, quantity: -2 }));
+  assert.doesNotThrow(() => t.closePositionSchema.parse({ positionId: 1, quantity: 0.5 }));
+});
+
+test("plan completeness messages name the *_plan tool, not the removed one-shot tool (Copilot #A)", async () => {
+  const fake = { get: async () => ({}), post: async () => ({}) } as never;
+  const po = (await t.placeOrderPlan(fake, { symbol: "EURUSD" })) as { needMoreInfo?: string };
+  assert.match(po.needMoreInfo!, /place_order_plan/);
+  const cp = (await t.closePositionPlan(fake, {})) as { needMoreInfo?: string };
+  assert.match(cp.needMoreInfo!, /close_position_plan/);
+});
+
+test("place_order no longer offers CloseBy or position-ID fields; hedged closes use close_by (Copilot)", () => {
+  // CloseBy is rejected by both the commit and plan schemas
+  assert.throws(() =>
+    t.placeOrderSchema.parse({
+      symbol: "EURUSD",
+      side: "buy",
+      quantity: 0.1,
+      orderType: "CloseBy",
+      timeInForce: "IOC",
+    }),
+  );
+  assert.throws(() => t.placeOrderPlanSchema.parse({ orderType: "CloseBy" }));
+  // the vestigial close-machinery fields are gone from the commit schema
+  assert.ok(!("positionId" in t.placeOrderSchema.shape));
+  assert.ok(!("positionById" in t.placeOrderSchema.shape));
+  // hedged closes still have their dedicated home
+  assert.doesNotThrow(() => t.closeByPlanSchema.parse({ positionId: 1, positionById: 2 }));
+});
+
 test("placeOrder POSTs /order with terse keys, no A, no mc", async () => {
   await t.placeOrder(client(), {
     symbol: "EURUSD",
@@ -275,8 +315,6 @@ test("placeOrder maps every optional field to its terse key", async () => {
     stopPrice: 1.2,
     stopLoss: 1.05,
     takeProfit: 1.3,
-    positionId: 7,
-    positionById: 8,
     comment: "hi",
   });
   assert.deepEqual(JSON.parse(captured[0].body!), {
@@ -289,8 +327,6 @@ test("placeOrder maps every optional field to its terse key", async () => {
     sp: 1.2,
     sl: 1.05,
     tp: 1.3,
-    pi: 7,
-    pbi: 8,
     ct: "hi",
   });
 });
@@ -322,4 +358,169 @@ test("modifyOrder still retries once on connection error (idempotent PUT)", asyn
   }) as any;
   await t.modifyOrder(client(), { orderId: 7, limitPrice: 1.1 });
   assert.equal(captured.length, 2);
+});
+
+// ===== place_order preview/commit (E1a) =====
+test("place_order_plan returns a preview + commitToken and does NOT call /order", async () => {
+  let orderCalls = 0;
+  const fake = {
+    get: async () => ({ s: "EURUSD", bp: 1.1, ap: 1.1003 }),
+    post: async (path: string) => {
+      if (path === "/order") orderCalls++;
+      return path === "/account/state" ? { e: 8968, m: 909 } : {};
+    },
+  } as never;
+  const r = (await t.placeOrderPlan(fake, {
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "Market",
+    timeInForce: "IOC",
+  })) as { commitToken?: string; preview?: { summary: string }; disclosure?: string };
+  assert.equal(orderCalls, 0); // plan must never execute
+  assert.ok(r.commitToken);
+  assert.match(r.preview!.summary, /BUY 0.1 EURUSD/i);
+  assert.ok(r.disclosure);
+});
+
+test("place_order_plan reports missing fields instead of guessing", async () => {
+  const fake = { get: async () => ({}), post: async () => ({}) } as never;
+  const r = (await t.placeOrderPlan(fake, {
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+  })) as { needMoreInfo?: string };
+  assert.ok(r.needMoreInfo);
+  assert.match(r.needMoreInfo!, /order type/);
+  assert.match(r.needMoreInfo!, /time-in-force/);
+});
+
+test("place_order_commit runs the stored order exactly once, then rejects reuse", async () => {
+  let body: Record<string, unknown> | undefined;
+  const fake = {
+    get: async () => ({ s: "EURUSD", bp: 1.1, ap: 1.1003 }),
+    post: async (path: string, b: Record<string, unknown>) => {
+      if (path === "/order") {
+        body = b;
+        return { ok: true };
+      }
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const plan = (await t.placeOrderPlan(fake, {
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "Market",
+    timeInForce: "IOC",
+  })) as { commitToken: string };
+  await t.placeOrderCommit(fake, { commitToken: plan.commitToken });
+  assert.equal(body!.s, "EURUSD");
+  assert.equal(body!.S, "buy");
+  // single-use: a second commit with the same token must reject
+  await assert.rejects(
+    t.placeOrderCommit(fake, { commitToken: plan.commitToken }),
+    /No pending order/,
+  );
+});
+
+// ===== close_position / close_by / close_all_positions preview/commit (E1a) =====
+test("close_position_plan previews + tokenizes without closing; missing positionId asks", async () => {
+  let writes = 0;
+  const fake = {
+    get: async () => ({}),
+    post: async (path: string) => {
+      if (path === "/order" || path === "/positions") writes++;
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const ok = (await t.closePositionPlan(fake, { positionId: 3 })) as {
+    commitToken?: string;
+    preview?: { summary: string };
+  };
+  assert.ok(ok.commitToken);
+  assert.match(ok.preview!.summary, /Close position 3/);
+  assert.equal(writes, 0); // plan must not query positions or place the closing order
+  const miss = (await t.closePositionPlan(fake, {})) as { needMoreInfo?: string };
+  assert.match(miss.needMoreInfo!, /position ID/);
+});
+
+test("close_position_commit closes the stored position once, then rejects reuse", async () => {
+  const fake = {
+    get: async () => ({}),
+    post: async (path: string) => {
+      if (path === "/positions") return { positions: [{ id: 3, s: "EURUSD", S: "buy", q: 2 }] };
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const plan = (await t.closePositionPlan(fake, { positionId: 3 })) as { commitToken: string };
+  await t.closePositionCommit(fake, { commitToken: plan.commitToken }); // executes without throwing
+  await assert.rejects(
+    t.closePositionCommit(fake, { commitToken: plan.commitToken }),
+    /No pending order/,
+  );
+});
+
+test("close_by_plan requires both ids then tokenizes", async () => {
+  const fake = { get: async () => ({}), post: async () => ({ e: 1, m: 0 }) } as never;
+  const miss = (await t.closeByPlan(fake, { positionId: 1 })) as { needMoreInfo?: string };
+  assert.match(miss.needMoreInfo!, /opposite position ID/);
+  const ok = (await t.closeByPlan(fake, { positionId: 1, positionById: 2 })) as {
+    commitToken?: string;
+    preview?: { summary: string };
+  };
+  assert.ok(ok.commitToken);
+  assert.match(ok.preview!.summary, /Close position 1 against 2/);
+});
+
+test("close_by_commit executes once, then rejects reuse", async () => {
+  const fake = {
+    get: async () => ({}),
+    post: async (path: string) => {
+      if (path === "/positions")
+        return {
+          positions: [
+            { id: 1, s: "EURUSD", S: "buy", q: 2 },
+            { id: 2, s: "EURUSD", S: "sell", q: 1 },
+          ],
+        };
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const plan = (await t.closeByPlan(fake, { positionId: 1, positionById: 2 })) as {
+    commitToken: string;
+  };
+  await t.closeByCommit(fake, { commitToken: plan.commitToken });
+  await assert.rejects(
+    t.closeByCommit(fake, { commitToken: plan.commitToken }),
+    /No pending order/,
+  );
+});
+
+test("close_all_positions_plan tokenizes with a high-impact disclosure (no required fields)", async () => {
+  const fake = { get: async () => ({}), post: async () => ({ e: 1, m: 0 }) } as never;
+  const r = (await t.closeAllPositionsPlan(fake, {})) as {
+    commitToken?: string;
+    preview?: { summary: string };
+    disclosure?: string;
+  };
+  assert.ok(r.commitToken);
+  assert.match(r.preview!.summary, /Close ALL/i);
+  assert.match(r.disclosure!, /ALL/);
+});
+
+test("close_all_positions_commit executes once, then rejects reuse", async () => {
+  const fake = {
+    get: async () => ({}),
+    post: async (path: string) => {
+      if (path === "/positions") return { positions: [{ id: 1, s: "EURUSD", S: "buy", q: 1 }] };
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const plan = (await t.closeAllPositionsPlan(fake, {})) as { commitToken: string };
+  await t.closeAllPositionsCommit(fake, { commitToken: plan.commitToken });
+  await assert.rejects(
+    t.closeAllPositionsCommit(fake, { commitToken: plan.commitToken }),
+    /No pending order/,
+  );
 });

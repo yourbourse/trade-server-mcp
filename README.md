@@ -5,11 +5,11 @@
 **Trade on YourBourse Trade Server from Claude and any MCP-compatible AI — as a broker or as a trader**
 
 [![CI](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-1.1.1-blue)](https://github.com/yourbourse/trade-server-mcp/blob/main/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/yourbourse/trade-server-mcp/blob/main/CHANGELOG.md)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-7C3AED)](https://modelcontextprotocol.io/)
-![Tests](https://img.shields.io/badge/tests-85%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-137%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 
 <br>
@@ -27,12 +27,47 @@ the server. No scripts, no copy-pasting API responses.
 
 ---
 
+## ⚡ New to MCP? Set up Claude Desktop in 5 steps
+
+Never used an MCP server before? This is for you — you'll be talking to your trading account through
+Claude in about 10 minutes, with no coding.
+
+1. **Install the basics** — [Node.js](https://nodejs.org) and [git](https://git-scm.com) (one-time).
+2. **Install [Claude Desktop](https://claude.ai/download).**
+3. **Open the config file** — in Claude Desktop: Settings → Developer → **Edit Config**.
+4. **Paste the block below** into that file and fill in the three details from your broker.
+5. **Fully restart Claude Desktop**, then ask it: *"Run a health check on the trade server."*
+
+```json
+{
+  "mcpServers": {
+    "trade-server": {
+      "command": "npx",
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
+      "env": {
+        "YB_BASE_URL": "<your-server-url>",
+        "YB_MODE": "client",
+        "YB_LOGIN": "<your-login>",
+        "YB_PASSWORD": "<your-password>"
+      }
+    }
+  }
+}
+```
+
+👉 **New to all this? Follow the [full click-by-click guide with screenshots](docs/CLAUDE_DESKTOP_SETUP.md).**
+
+> Most people should use the setup above. You only need to clone and build the repository if you're a
+> developer who wants to read or modify the code.
+
+---
+
 ## Highlights
 
 | Feature | Description |
 |---------|-------------|
 | **Two modes, one server** | **Client mode** for traders (scoped to your own account) and **admin mode** for broker operations (server-wide) — selected by the credentials you configure |
-| **26 trader tools / 38 broker tools** | Task-shaped tools covering trading, account monitoring, market data, and (admin) server configuration, plus MCP resources for static context |
+| **30 trader tools / 42 broker tools** | Task-shaped tools covering trading, account monitoring, market data, and (admin) server configuration, plus MCP resources for static context |
 | **Live trading** | Market, Limit, Stop, StopLimit, and CloseBy orders with optional SL/TP; modify, cancel, partial close, flatten-everything composites |
 | **Account monitoring** | Balance, equity, margin, unrealized P/L, open positions, working orders, trade and transfer history — single calls or one-shot summaries |
 | **Market data & indicators** | Quotes, market depth, OHLCV candles, currency conversion; admin mode adds locally computed indicators (RSI, MACD, EMA, Bollinger Bands, and more) |
@@ -44,31 +79,20 @@ the server. No scripts, no copy-pasting API responses.
 
 ## Quick Start
 
-**No-clone install (recommended).** Node.js 18+ and git are all you need — your MCP client
-fetches, builds, and runs the server straight from this repository, pinned to a release tag.
-For a trader on Claude Desktop, add to `claude_desktop_config.json`:
+New to MCP and on Claude Desktop? Use the **5-step setup above**, or the full
+[Claude Desktop Setup guide](docs/CLAUDE_DESKTOP_SETUP.md). This section is the condensed reference
+for every client.
 
-```json
-{
-  "mcpServers": {
-    "trade-server": {
-      "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"],
-      "env": {
-        "YB_BASE_URL": "https://<your-server-host>:<port>",
-        "YB_MODE": "client",
-        "YB_LOGIN": "<login>",
-        "YB_PASSWORD": "<password>"
-      }
-    }
-  }
-}
-```
+**No-clone install (recommended).** Node.js 18+ and git are all you need — your MCP client fetches,
+builds, and runs the server straight from this repository. It tracks the **latest version on the
+`main` branch** (a moving target, not a fixed release), so fixes and improvements reach you without
+editing your config — clear the npx cache when you want the newest `main`, since npx caches by spec
+and may keep running its cached copy until you do. Point your client's `command`/`args`
+at `npx -y github:yourbourse/trade-server-mcp`; complete per-client config snippets (Claude Desktop,
+Claude Code, and others), both modes, and every environment variable are in
+[Configuration](docs/CONFIGURATION.md).
 
-The `#v1.1.1` pin makes the install immutable — see [Security](docs/SECURITY.md) for why we
-distribute from GitHub rather than the npm registry.
-
-**Or clone and build** if you prefer a local checkout:
+**Or clone and build** if you prefer a local checkout you can read and modify:
 
 ```bash
 git clone https://github.com/yourbourse/trade-server-mcp.git
@@ -77,18 +101,20 @@ npm ci
 npm run build
 ```
 
-then use `"command": "node", "args": ["<path-to-repo>/dist/index.js"]` with the same `env`
-block.
+then use `"command": "node", "args": ["<path-to-repo>/dist/index.js"]` with the same `env` block.
 
-Broker administrators use `YB_MODE=admin` with `YB_API_KEY` / `YB_SECRET_KEY` instead. All
-variables, both modes, and snippets for Claude Code and other MCP clients are in
-[Configuration](docs/CONFIGURATION.md).
+Broker administrators use `YB_MODE=admin` with `YB_API_KEY` / `YB_SECRET_KEY` instead — see
+[Admin Mode](docs/ADMIN_MODE.md).
 
 **Finally, restart your MCP client** so it launches the server — then ask your AI:
 *"What's my account state?"*
 
-First time setting up? The [Getting Started guide](docs/GETTING_STARTED.md) walks through
-everything, including which credentials you need and how to verify the first tool call.
+> **Pinning a version (advanced).** The default install follows the `main` branch (latest code). If
+> you need a reproducible, immutable build, pin a specific release tag or commit — see
+> [Configuration](docs/CONFIGURATION.md#pinning-a-version) for the syntax.
+
+First time setting up? The [Getting Started guide](docs/GETTING_STARTED.md) walks through everything,
+including which credentials you need and how to verify the first tool call.
 
 ---
 
@@ -100,7 +126,7 @@ One process runs exactly one mode — the tool set is decided at startup from yo
 |---|---|---|
 | **Who it's for** | A trader with an account at a broker running a YourBourse Trade Server | The broker: operations and administration teams |
 | **Scope** | Your own account only — the session token *is* the scope, enforced by the server | Server-wide: every account, group, client, routing rule, and liquidity connector |
-| **Tools / resources** | 26 tools, 1 resource | 38 tools, 4 resources |
+| **Tools / resources** | 30 tools, 1 resource | 42 tools, 4 resources |
 | **Credentials** | `YB_LOGIN` + `YB_PASSWORD` (or a pre-issued token pair) | `YB_API_KEY` + `YB_SECRET_KEY` from the server admin panel |
 | **Trading** | On your account; no account parameter exists | On behalf of any account via `accountId` |
 | **Extras** | Rate-limit visibility, scoped balances | Cash transfers, order routing management, indicators, L1/L2 over WebSocket |
@@ -162,7 +188,7 @@ Full guides: [Client Mode](docs/CLIENT_MODE.md) · [Admin Mode](docs/ADMIN_MODE.
                     v                               v
          +--------------------+         +---------------------+
          | register-admin.ts  |         | register-client.ts  |
-         | 38 tools, 4 res.   |         | 26 tools, 1 res.    |
+         | 42 tools, 4 res.   |         | 30 tools, 1 res.    |
          +---------+----------+         +----------+----------+
                    |                               |
                    v                               v
@@ -209,8 +235,8 @@ trade-server-mcp/
 ├── src/
 │   ├── index.ts               # Entry point: config → mode → register → stdio transport
 │   ├── config.ts              # Env parsing, mode selection & inference
-│   ├── register-admin.ts      # Registers the 38 admin tools + 4 resources
-│   ├── register-client.ts     # Registers the 26 client tools + 1 resource
+│   ├── register-admin.ts      # Registers the 42 admin tools + 4 resources
+│   ├── register-client.ts     # Registers the 30 client tools + 1 resource
 │   ├── tool-handler.ts        # Wraps tool results/errors for MCP
 │   ├── rest-client.ts         # Signed REST client (HMAC, retries, ETag, error mapping)
 │   ├── ws-client.ts           # WebSocket quotes/depth client (admin only)
@@ -273,8 +299,9 @@ signing secret for the sign-in request. Credentials live exclusively in your MCP
 configuration and the server's process environment; nothing is ever written to disk, logged,
 or echoed back to the AI. Order-placing requests are never retried on connection errors, so a
 network blip cannot turn into a duplicate fill. The project ships **no npm package by
-design**: distribution is npx from a pinned GitHub release tag, or clone + build — never
-the npm registry — keeping the supply chain to four pinned runtime dependencies. Full details, recommended practices, and the vulnerability reporting
+design**: distribution is npx straight from GitHub — the `main` branch by default, or a pinned tag
+or commit for a reproducible build — never the npm registry, keeping the supply chain to four direct
+runtime dependencies. Full details, recommended practices, and the vulnerability reporting
 process are in [SECURITY.md](docs/SECURITY.md).
 
 ---

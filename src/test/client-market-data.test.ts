@@ -82,6 +82,12 @@ test("getSymbols filter '(' does not throw and matches literal paren symbol", as
   assert.deepEqual(res, [{ name: "(" }]);
 });
 
+test("getSymbols filter matches the server's real 'n' field (regression: was reading 'name')", async () => {
+  respond = () => ({ symbols: [{ n: "EURUSD" }, { n: "GBPUSD" }, { n: "USDJPY" }] });
+  const res = (await m.getSymbols(client(), { filter: "EUR*" })) as Array<{ n?: string }>;
+  assert.deepEqual(res, [{ n: "EURUSD" }]);
+});
+
 test("getQuotes returns null+error for failed symbol, quote for success", async () => {
   globalThis.fetch = (async (url: any, init: any) => {
     captured.push({ url: String(url), method: init?.method ?? "GET", body: init?.body });
@@ -103,4 +109,14 @@ test("getQuotes returns null+error for failed symbol, quote for success", async 
     res[1].error!.includes("500") || res[1].error!.includes("SERVER_ERROR"),
     `error should mention 500 or SERVER_ERROR, got: ${res[1].error}`,
   );
+});
+
+test("getQuotesSchema rejects more than 50 symbols", () => {
+  const tooMany = Array.from({ length: 51 }, (_, i) => `S${i}`);
+  assert.throws(() => m.getQuotesSchema.parse({ symbols: tooMany }));
+});
+
+test("getQuotesSchema accepts exactly 50 symbols", () => {
+  const fifty = Array.from({ length: 50 }, (_, i) => `S${i}`);
+  assert.doesNotThrow(() => m.getQuotesSchema.parse({ symbols: fifty }));
 });
