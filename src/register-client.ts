@@ -6,7 +6,9 @@ import * as t from "./tools/client/trading.js";
 import * as a from "./tools/client/account.js";
 import * as m from "./tools/client/market-data.js";
 
-export const CLIENT_TOOL_COUNT = 26;
+// E1a spike: place_order is split into place_order_plan + place_order_commit (26 − 1 + 2 = 27).
+// The other 3 money-movers stay one-shot until the spike proves Desktop executes the commit.
+export const CLIENT_TOOL_COUNT = 27;
 
 export function registerClientTools(server: McpServer, client: RestClient, auth?: ClientAuth) {
   // While sign-in is failing (authFailureHint non-null), append the targeted hint
@@ -28,12 +30,26 @@ export function registerClientTools(server: McpServer, client: RestClient, auth?
       }
     };
 
-  // Trading (9)
-  server.tool(
-    "place_order",
-    "Place a new order on YOUR account. Supports Market, Limit, Stop, StopLimit and CloseBy types. For Market orders use timeInForce IOC or FOK. Limit/Stop orders require limitPrice/stopPrice. Optionally attach stopLoss, takeProfit and a comment. To close two opposite hedged positions against each other, prefer the close_by tool.",
-    t.placeOrderSchema.shape,
-    toolHandler(withHint((p) => t.placeOrder(client, p))),
+  // Trading (10: place_order is split into plan/commit for confirm-before-execute)
+  server.registerTool(
+    "place_order_plan",
+    {
+      description:
+        "STEP 1 of placing an order — preview a new order on YOUR account WITHOUT executing. Validates the request and returns a plain-language summary, the live quote, your free margin, and a commitToken. Show the preview to the user; ONLY after they confirm, call place_order_commit with that token. If required details are missing (symbol, side, quantity, order type, time-in-force) it returns exactly what's needed instead of guessing. Nothing is sent to the market.",
+      inputSchema: t.placeOrderPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler(withHint((p) => t.placeOrderPlan(client, p))),
+  );
+  server.registerTool(
+    "place_order_commit",
+    {
+      description:
+        "STEP 2 — execute the order previewed by place_order_plan. Requires the commitToken from that preview; the order is fixed at plan time and cannot be changed here. This places a LIVE order via an AI assistant — only call after the user has reviewed the preview and explicitly confirmed.",
+      inputSchema: t.placeOrderCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler(withHint((p) => t.placeOrderCommit(client, p))),
   );
   server.tool(
     "modify_order",
