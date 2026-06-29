@@ -6,9 +6,9 @@ import * as t from "./tools/client/trading.js";
 import * as a from "./tools/client/account.js";
 import * as m from "./tools/client/market-data.js";
 
-// E1a spike: place_order is split into place_order_plan + place_order_commit (26 − 1 + 2 = 27).
-// The other 3 money-movers stay one-shot until the spike proves Desktop executes the commit.
-export const CLIENT_TOOL_COUNT = 27;
+// E1a: all 4 money-movers (place_order, close_position, close_by, close_all_positions) are split
+// into *_plan + *_commit pairs (26 − 4 + 8 = 30). No un-gated execution path remains.
+export const CLIENT_TOOL_COUNT = 30;
 
 export function registerClientTools(server: McpServer, client: RestClient, auth?: ClientAuth) {
   // While sign-in is failing (authFailureHint non-null), append the targeted hint
@@ -75,17 +75,45 @@ export function registerClientTools(server: McpServer, client: RestClient, auth?
     t.modifyPositionSltpSchema.shape,
     toolHandler(withHint((p) => t.modifyPositionSltp(client, p))),
   );
-  server.tool(
-    "close_position",
-    "Close one of your open positions (full or partial). Specify quantity for partial close, omit for full close. Places an opposite market order against the position.",
-    t.closePositionSchema.shape,
-    toolHandler(withHint((p) => t.closePosition(client, p))),
+  server.registerTool(
+    "close_position_plan",
+    {
+      description:
+        "STEP 1 of closing one of YOUR positions — preview WITHOUT executing; returns a commitToken. Needs positionId (optional quantity for a partial close). Show the preview; only after you confirm, call close_position_commit. Nothing is sent.",
+      inputSchema: t.closePositionPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler(withHint((p) => t.closePositionPlan(client, p))),
   );
-  server.tool(
-    "close_by",
-    "Close two of your opposite (hedged) positions against each other. Both must be on the same symbol with opposite sides; uses the smaller quantity. Only meaningful on hedging accounts.",
-    t.closeBySchema.shape,
-    toolHandler(withHint((p) => t.closeBy(client, p))),
+  server.registerTool(
+    "close_position_commit",
+    {
+      description:
+        "STEP 2 — execute the close previewed by close_position_plan. Requires the commitToken. Places a LIVE closing order — only after you have reviewed the preview and confirmed.",
+      inputSchema: t.closePositionCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler(withHint((p) => t.closePositionCommit(client, p))),
+  );
+  server.registerTool(
+    "close_by_plan",
+    {
+      description:
+        "STEP 1 of a hedged close (two opposite positions, same symbol) — preview WITHOUT executing; returns a commitToken. Needs positionId + positionById. Only meaningful on hedging accounts. Show the preview; only after you confirm, call close_by_commit. Nothing is sent.",
+      inputSchema: t.closeByPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler(withHint((p) => t.closeByPlan(client, p))),
+  );
+  server.registerTool(
+    "close_by_commit",
+    {
+      description:
+        "STEP 2 — execute the hedged close previewed by close_by_plan. Requires the commitToken. Places a LIVE close — only after you have reviewed the preview and confirmed.",
+      inputSchema: t.closeByCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler(withHint((p) => t.closeByCommit(client, p))),
   );
   server.tool(
     "cancel_all_orders",
@@ -93,11 +121,25 @@ export function registerClientTools(server: McpServer, client: RestClient, auth?
     t.cancelAllOrdersSchema.shape,
     toolHandler(withHint((p) => t.cancelAllOrders(client, p))),
   );
-  server.tool(
-    "close_all_positions",
-    "Close ALL of your open positions in one call. Optionally filter by symbol. Useful for emergency flatten. Returns count of closed positions.",
-    t.closeAllPositionsSchema.shape,
-    toolHandler(withHint((p) => t.closeAllPositions(client, p))),
+  server.registerTool(
+    "close_all_positions_plan",
+    {
+      description:
+        "STEP 1 — preview closing ALL of YOUR open positions (optionally filtered by symbol) WITHOUT executing; returns a commitToken. High-impact. Show the preview; only after you confirm, call close_all_positions_commit. Nothing is sent.",
+      inputSchema: t.closeAllPositionsPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler(withHint((p) => t.closeAllPositionsPlan(client, p))),
+  );
+  server.registerTool(
+    "close_all_positions_commit",
+    {
+      description:
+        "STEP 2 — execute the close-all previewed by close_all_positions_plan. Requires the commitToken. LIVE and high-impact (closes every matching position) — only after you have reviewed the preview and confirmed.",
+      inputSchema: t.closeAllPositionsCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler(withHint((p) => t.closeAllPositionsCommit(client, p))),
   );
 
   // Read trading (4)
