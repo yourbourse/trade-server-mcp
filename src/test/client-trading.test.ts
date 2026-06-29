@@ -20,6 +20,19 @@ beforeEach(() => {
 
 const client = () => new RestClient("http://ts", new StaticCredentials("K", "S"));
 
+test("closePositionPlanSchema rejects non-positive quantity (Copilot #5)", () => {
+  assert.throws(() => t.closePositionPlanSchema.parse({ positionId: 1, quantity: 0 }));
+  assert.throws(() => t.closePositionPlanSchema.parse({ positionId: 1, quantity: -1 }));
+  assert.doesNotThrow(() => t.closePositionPlanSchema.parse({ positionId: 1, quantity: 0.1 }));
+  assert.doesNotThrow(() => t.closePositionPlanSchema.parse({ positionId: 1 })); // full close
+});
+
+test("closePositionSchema (commit) also rejects non-positive quantity (Copilot #5)", () => {
+  assert.throws(() => t.closePositionSchema.parse({ positionId: 1, quantity: 0 }));
+  assert.throws(() => t.closePositionSchema.parse({ positionId: 1, quantity: -2 }));
+  assert.doesNotThrow(() => t.closePositionSchema.parse({ positionId: 1, quantity: 0.5 }));
+});
+
 test("placeOrder POSTs /order with terse keys, no A, no mc", async () => {
   await t.placeOrder(client(), {
     symbol: "EURUSD",

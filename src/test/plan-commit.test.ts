@@ -33,3 +33,18 @@ test("a wrong token error lists the live pending token so the model can self-cor
     takeCommit(good); // consume so the shared store is clean for other tests
   }
 });
+
+test("issuePlan tokens are unguessable, not a sequential counter (Copilot #1)", () => {
+  const t1 = issuePlan({ a: 1 });
+  const t2 = issuePlan({ a: 2 });
+  try {
+    // The commitToken is the confirm-before-execute safety boundary, so it must not be a
+    // predictable plan_<seq>_<ts> value — it is now backed by a cryptographically-random UUID.
+    assert.doesNotMatch(t1, /^plan_\d+_/);
+    assert.match(t1, /^plan_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    assert.notEqual(t1, t2);
+  } finally {
+    takeCommit(t1);
+    takeCommit(t2);
+  }
+});

@@ -41,3 +41,30 @@ test("preview includes quote + free margin when data calls succeed", async () =>
   assert.equal(p.freeMargin, 8968 - 909);
   assert.ok(p.quote);
 });
+
+test("preview echoes margin-check OFF so the confirmer sees a bypassed margin check (Copilot #7)", async () => {
+  const client = { get: async () => ({}), post: async () => ({}) } as never;
+  const off = await buildOrderPreview(client, {
+    action: "place",
+    accountId: 100,
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "Market",
+    timeInForce: "FOK",
+    marginCheck: false,
+  });
+  assert.match(off.summary, /margin check off/i);
+  // Default (true / omitted) is the safe case and must not clutter the summary.
+  const on = await buildOrderPreview(client, {
+    action: "place",
+    accountId: 100,
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "Market",
+    timeInForce: "FOK",
+    marginCheck: true,
+  });
+  assert.doesNotMatch(on.summary, /margin check/i);
+});

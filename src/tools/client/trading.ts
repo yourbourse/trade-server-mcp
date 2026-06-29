@@ -251,7 +251,11 @@ async function queryPositions(client: RestClient): Promise<Position[]> {
 
 export const closePositionSchema = z.object({
   positionId: z.number().describe("Position ID to close"),
-  quantity: z.number().optional().describe("Partial close volume in lots. Omit for full close"),
+  quantity: z
+    .number()
+    .positive()
+    .optional()
+    .describe("Partial close volume in lots. Omit for full close"),
 });
 
 export async function closePosition(
@@ -419,7 +423,11 @@ export async function closeAllPositions(
 
 export const closePositionPlanSchema = z.object({
   positionId: z.number().optional().describe("Position ID to close"),
-  quantity: z.number().optional().describe("Partial close volume in lots. Omit for full close"),
+  quantity: z
+    .number()
+    .positive()
+    .optional()
+    .describe("Partial close volume in lots. Omit for full close"),
 });
 const CLOSE_POSITION_DISCLOSURE =
   "You are confirming a LIVE position close via an AI assistant. Review the details, then call close_position_commit with this commitToken to execute. Nothing is sent until you commit.";

@@ -116,7 +116,11 @@ export async function getOpenPositions(
 export const closePositionSchema = z.object({
   accountId: z.number().describe("Trading account ID"),
   positionId: z.number().describe("Position ID to close"),
-  quantity: z.number().optional().describe("Partial close volume in lots. Omit for full close"),
+  quantity: z
+    .number()
+    .positive()
+    .optional()
+    .describe("Partial close volume in lots. Omit for full close"),
 });
 
 export async function closePosition(
@@ -466,6 +470,7 @@ export async function placeOrderPlan(
     stopPrice: params.stopPrice,
     stopLoss: params.stopLoss,
     takeProfit: params.takeProfit,
+    marginCheck: params.marginCheck,
   });
   const commitToken = issuePlan(params);
   return { preview, commitToken, disclosure: PLACE_ORDER_DISCLOSURE };
@@ -485,7 +490,11 @@ export async function placeOrderCommit(
 export const closePositionPlanSchema = z.object({
   accountId: z.number().optional().describe("Trading account ID"),
   positionId: z.number().optional().describe("Position ID to close"),
-  quantity: z.number().optional().describe("Partial close volume in lots. Omit for full close"),
+  quantity: z
+    .number()
+    .positive()
+    .optional()
+    .describe("Partial close volume in lots. Omit for full close"),
 });
 const CLOSE_POSITION_DISCLOSURE =
   "You are confirming a LIVE position close on a client account via an AI assistant. Review the details, then call close_position_commit with this commitToken to execute. Nothing is sent until you commit.";

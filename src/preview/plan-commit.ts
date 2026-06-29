@@ -6,6 +6,8 @@
 // safe for the single-user case. Revisit if a future transport ever multiplexes users in one
 // process (tokens would then need per-session scoping).
 
+import { randomUUID } from "node:crypto";
+
 // 5 minutes: long enough for an unhurried human-in-the-loop confirm in a chat UI. (Spike learning:
 // a 90s TTL expired during the confirm latency, forcing the model to silently re-plan. A market
 // order's fill is at live market regardless, so a slightly older preview at commit is harmless.)
@@ -14,7 +16,6 @@ export const PLAN_TTL_MS = 300_000;
 type Entry = { order: unknown; expiresAt: number };
 
 const store = new Map<string, Entry>();
-let seq = 0;
 
 /** Drop expired entries (DA fix #3: lazy sweep on each issue — no timer, no leak). */
 function sweepExpired(now: number): void {
@@ -23,10 +24,16 @@ function sweepExpired(now: number): void {
   }
 }
 
-/** Stash an order, returning a short opaque single-use token. `nowFn` is injectable for tests. */
+/**
+ * Stash an order, returning an opaque single-use token. `nowFn` is injectable for tests.
+ *
+ * The token is the confirm-before-execute safety boundary, so it is cryptographically random
+ * (randomUUID) rather than a predictable counter+timestamp — an unguessable token cannot be
+ * committed without first having seen the matching preview.
+ */
 export function issuePlan(order: unknown, nowFn: () => number = Date.now): string {
   sweepExpired(nowFn());
-  const token = `plan_${++seq}_${Math.floor(nowFn() % 1e6).toString(36)}`;
+  const token = `plan_${randomUUID()}`;
   store.set(token, { order, expiresAt: nowFn() + PLAN_TTL_MS });
   return token;
 }

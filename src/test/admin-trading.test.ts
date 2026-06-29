@@ -10,6 +10,25 @@ beforeEach(() => {
   globalThis.fetch = (async () => new Response("{}", { status: 200 })) as any;
 });
 
+test("admin closePositionPlanSchema rejects non-positive quantity (Copilot #6)", () => {
+  assert.throws(() =>
+    at.closePositionPlanSchema.parse({ accountId: 1, positionId: 1, quantity: 0 }),
+  );
+  assert.throws(() =>
+    at.closePositionPlanSchema.parse({ accountId: 1, positionId: 1, quantity: -1 }),
+  );
+  assert.doesNotThrow(() =>
+    at.closePositionPlanSchema.parse({ accountId: 1, positionId: 1, quantity: 0.1 }),
+  );
+});
+
+test("admin closePositionSchema (commit) also rejects non-positive quantity (Copilot #6)", () => {
+  assert.throws(() => at.closePositionSchema.parse({ accountId: 1, positionId: 1, quantity: 0 }));
+  assert.doesNotThrow(() =>
+    at.closePositionSchema.parse({ accountId: 1, positionId: 1, quantity: 0.5 }),
+  );
+});
+
 test("admin placeOrder does NOT retry on a connection error (duplicate-fill protection)", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {

@@ -20,6 +20,7 @@ export type OrderSummary = {
   takeProfit?: number;
   positionId?: number;
   positionById?: number;
+  marginCheck?: boolean; // admin place_order only — surfaced when false (margin validation bypassed)
 };
 
 export type Preview = { summary: string; quote?: unknown; freeMargin?: number; note?: string };
@@ -45,7 +46,10 @@ function humanSummary(o: OrderSummary): string {
       .join(", ");
     base = `${parts.join(" ")}${sltp ? ` (${sltp})` : ""}`;
   }
-  return `${o.accountId ? `[account ${o.accountId}] ` : ""}${base}.`;
+  // Surface a bypassed margin check (admin place_order, marginCheck:false) so the confirmer sees a
+  // safety-relevant flag in the very preview they approve. Default (true/omitted) stays uncluttered.
+  const marginNote = o.marginCheck === false ? " [margin check OFF]" : "";
+  return `${o.accountId ? `[account ${o.accountId}] ` : ""}${base}${marginNote}.`;
 }
 
 export async function buildOrderPreview(client: RestClient, o: OrderSummary): Promise<Preview> {
