@@ -6,7 +6,10 @@
 // safe for the single-user case. Revisit if a future transport ever multiplexes users in one
 // process (tokens would then need per-session scoping).
 
-export const PLAN_TTL_MS = 90_000;
+// 5 minutes: long enough for an unhurried human-in-the-loop confirm in a chat UI. (Spike learning:
+// a 90s TTL expired during the confirm latency, forcing the model to silently re-plan. A market
+// order's fill is at live market regardless, so a slightly older preview at commit is harmless.)
+export const PLAN_TTL_MS = 300_000;
 
 type Entry = { order: unknown; expiresAt: number };
 
