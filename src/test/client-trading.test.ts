@@ -323,3 +323,67 @@ test("modifyOrder still retries once on connection error (idempotent PUT)", asyn
   await t.modifyOrder(client(), { orderId: 7, limitPrice: 1.1 });
   assert.equal(captured.length, 2);
 });
+
+// ===== place_order preview/commit (E1a) =====
+test("place_order_plan returns a preview + commitToken and does NOT call /order", async () => {
+  let orderCalls = 0;
+  const fake = {
+    get: async () => ({ s: "EURUSD", bp: 1.1, ap: 1.1003 }),
+    post: async (path: string) => {
+      if (path === "/order") orderCalls++;
+      return path === "/account/state" ? { e: 8968, m: 909 } : {};
+    },
+  } as never;
+  const r = (await t.placeOrderPlan(fake, {
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "Market",
+    timeInForce: "IOC",
+  })) as { commitToken?: string; preview?: { summary: string }; disclosure?: string };
+  assert.equal(orderCalls, 0); // plan must never execute
+  assert.ok(r.commitToken);
+  assert.match(r.preview!.summary, /BUY 0.1 EURUSD/i);
+  assert.ok(r.disclosure);
+});
+
+test("place_order_plan reports missing fields instead of guessing", async () => {
+  const fake = { get: async () => ({}), post: async () => ({}) } as never;
+  const r = (await t.placeOrderPlan(fake, {
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+  })) as { needMoreInfo?: string };
+  assert.ok(r.needMoreInfo);
+  assert.match(r.needMoreInfo!, /order type/);
+  assert.match(r.needMoreInfo!, /time-in-force/);
+});
+
+test("place_order_commit runs the stored order exactly once, then rejects reuse", async () => {
+  let body: Record<string, unknown> | undefined;
+  const fake = {
+    get: async () => ({ s: "EURUSD", bp: 1.1, ap: 1.1003 }),
+    post: async (path: string, b: Record<string, unknown>) => {
+      if (path === "/order") {
+        body = b;
+        return { ok: true };
+      }
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const plan = (await t.placeOrderPlan(fake, {
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "Market",
+    timeInForce: "IOC",
+  })) as { commitToken: string };
+  await t.placeOrderCommit(fake, { commitToken: plan.commitToken });
+  assert.equal(body!.s, "EURUSD");
+  assert.equal(body!.S, "buy");
+  // single-use: a second commit with the same token must reject
+  await assert.rejects(
+    t.placeOrderCommit(fake, { commitToken: plan.commitToken }),
+    /No pending order/,
+  );
+});
