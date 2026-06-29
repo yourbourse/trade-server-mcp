@@ -1,0 +1,60 @@
+// Builds the human-facing preview shown before a money-mover executes. The order echo is always
+// produced; live quote + free-margin enrichment is best-effort and degrades gracefully (the data
+// endpoints can blip server-side). Margin *requirement* is intentionally NOT computed — leverage /
+// margin-rate is not exposed by the client API, so we show notional inputs the user can sanity-check
+// (order details + quote + free margin) rather than a fabricated number.
+
+import type { RestClient } from "../rest-client.js";
+
+export type OrderSummary = {
+  action: "place" | "close" | "close_all" | "close_by";
+  symbol?: string;
+  side?: string;
+  quantity?: number;
+  orderType?: string;
+  timeInForce?: string;
+  limitPrice?: number;
+  stopPrice?: number;
+  stopLoss?: number;
+  takeProfit?: number;
+  positionId?: number;
+  positionById?: number;
+};
+
+export type Preview = { summary: string; quote?: unknown; freeMargin?: number; note?: string };
+
+function humanSummary(o: OrderSummary): string {
+  if (o.action === "close_all")
+    return `Close ALL open positions${o.symbol ? ` for ${o.symbol}` : ""}.`;
+  if (o.action === "close_by")
+    return `Close position ${o.positionId} against ${o.positionById} (hedged close).`;
+  if (o.action === "close")
+    return `Close position ${o.positionId}${o.quantity ? ` (${o.quantity} lots)` : " (full)"}.`;
+  const px = o.limitPrice ?? o.stopPrice;
+  const parts = [
+    `${(o.side ?? "").toUpperCase()} ${o.quantity} ${o.symbol}`,
+    o.orderType,
+    px !== undefined ? `@ ${px}` : "@ market",
+    o.timeInForce,
+  ].filter(Boolean);
+  const sltp = [o.stopLoss ? `SL ${o.stopLoss}` : "", o.takeProfit ? `TP ${o.takeProfit}` : ""]
+    .filter(Boolean)
+    .join(", ");
+  return `${parts.join(" ")}${sltp ? ` (${sltp})` : ""}.`;
+}
+
+export async function buildOrderPreview(client: RestClient, o: OrderSummary): Promise<Preview> {
+  const preview: Preview = { summary: humanSummary(o) };
+  try {
+    if (o.symbol) preview.quote = await client.get(`/quote/${encodeURIComponent(o.symbol)}`);
+    // /account/state is signed over an EMPTY body — pass undefined (sends no HTTP body).
+    const state = (await client.post("/account/state", undefined)) as { e?: number; m?: number };
+    if (typeof state.e === "number" && typeof state.m === "number") {
+      preview.freeMargin = state.e - state.m; // equity − used margin = free margin
+    }
+  } catch {
+    preview.note =
+      "Live market/account data was unavailable for this preview (server data endpoint blipped); the order details above are still exact.";
+  }
+  return preview;
+}
