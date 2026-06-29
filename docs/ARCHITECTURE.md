@@ -22,7 +22,7 @@ design decisions behind it all.
                                   v                                             v
                        +--------------------+                       +---------------------+
                        | register-admin.ts  |                       | register-client.ts  |
-                       | 38 tools           |                       | 26 tools            |
+                       | 42 tools           |                       | 30 tools            |
                        | 4 resources        |                       | 1 resource          |
                        +---------+----------+                       +----------+----------+
                                  |                                             |
@@ -66,25 +66,33 @@ Everything under `src/`:
 |---|---|
 | `index.ts` | Entry point: parse env config, construct the auth provider and clients for the selected mode, register tools, connect the stdio transport, log the startup line. |
 | `config.ts` | Environment-variable parsing: mode selection and inference, whitespace trimming, validation, and every startup error message. |
-| `register-admin.ts` | Registers the 38 admin tools and 4 MCP resources, wiring each tool name + description + schema to its implementation. |
-| `register-client.ts` | Registers the 26 client tools and 1 MCP resource; exports `CLIENT_TOOL_COUNT`; wraps every tool so sign-in failure hints surface in tool errors. |
+| `register-admin.ts` | Registers the 42 admin tools and 4 MCP resources, wiring each tool name + description + schema to its implementation. |
+| `register-client.ts` | Registers the 30 client tools and 1 MCP resource; exports `CLIENT_TOOL_COUNT`; wraps every tool so sign-in failure hints surface in tool errors. |
 | `tool-handler.ts` | Wraps each tool function for MCP: serializes results to JSON text, converts thrown errors into a structured `{ error, message }` result with `isError: true`. |
 | `rest-client.ts` | Signed REST client for `/api/v1`: header construction, HMAC signing, ETag caching (`If-None-Match` / `If-Match`), semantic error mapping (`ApiError`), 401 renew-and-retry (`withAuthRetry`), and the transport retry policy. |
 | `ws-client.ts` | WebSocket client for `/ws/v1` (admin mode only): live quotes (L1) and market depth (L2), ping/pong keepalive, bounded reconnect. |
 | `auth/admin-auth.ts` | `generateSignature` (HMAC-SHA256, base64url), the `CredentialsProvider` interface, and `StaticCredentials` for static key pairs. |
 | `auth/client-auth.ts` | `ClientAuth`: login-based sign-in via `POST /authorize`, token rotation via `/refresh`, auto-refresh scheduling at 80% of token lifetime (single-flight), 401 recovery hook, and targeted sign-in failure hints. |
-| `tools/admin/trading.ts` | Admin trading tools: order placement/modification/cancel, positions, close composites, history, account summary. |
+| `tools/admin/trading.ts` | Admin trading tools: order placement/modification/cancel, positions, close composites, history, account summary. The four money-movers (place order, close position, close-by, close all) are exposed as `*_plan` + `*_commit` pairs (confirm-before-execute). |
 | `tools/admin/account.ts` | Admin account tools: account state/info, all accounts, cash transfers, transfer history, balances. |
 | `tools/admin/market-data.ts` | Admin market data: WS quotes and depth, symbols, candles, conversion rate, locally computed indicators, health check. |
 | `tools/admin/config.ts` | Admin configuration tools: groups, clients, order routing (get/set/add/remove), liquidity connectors, symbol details. |
-| `tools/client/trading.ts` | Client trading tools (13): place/modify/cancel orders, SL/TP, close composites, working orders, history. |
+| `tools/client/trading.ts` | Client trading tools: place/modify/cancel orders, SL/TP, close composites, working orders, history. The four money-movers (place order, close position, close-by, close all) are exposed as `*_plan` + `*_commit` pairs (confirm-before-execute). |
 | `tools/client/account.ts` | Client account tools (5): account state, summary, balances, transfer history, rate limits. |
 | `tools/client/market-data.ts` | Client market data (7 + health check): quotes, depth, symbols, symbol details, candles, conversion rate. |
+| `preview/plan-commit.ts` | Single-use commit-token store backing the preview/commit flow: `issuePlan()` stashes a validated order and returns a short opaque token (5-minute TTL); `takeCommit()` consumes it exactly once, so a retried commit can never double-fill. |
+| `preview/order-preview.ts` | Order preview builder: turns a planned order into a plain-language summary plus best-effort live quote and free margin (degrades gracefully if the data endpoints blip). |
+| `validation.ts` | Parameter-completeness messages: when a `*_plan` request is missing required fields, returns exactly what's needed (with valid options) instead of guessing or surfacing a raw schema error. |
 | `test/*.ts` | Test suite (node:test): golden HMAC vectors, config parsing, REST client behavior, client auth lifecycle, endpoint-mapping tests per tool module, registration counts. |
 
 Each tool module exports pairs: a zod schema (the parameter contract your AI sees) and an async
 function that maps the friendly parameters onto the Trade Server's REST API. The register files
 are the single place where tool names and descriptions live.
+
+Most tools are registered with `server.tool`. The money-movers are the exception: their `*_plan`
+and `*_commit` tools are registered with `server.registerTool` so they can carry behavior
+annotations — plan tools are marked `readOnlyHint` (they only preview), commit tools `destructiveHint`
+(they place a live order), and commit descriptions carry an AI-execution disclosure.
 
 ## Mode selection
 

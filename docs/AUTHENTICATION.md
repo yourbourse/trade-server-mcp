@@ -170,9 +170,10 @@ The exact rules, all of them deliberate:
 - **Transport retry on connection errors — except order placements.** If a write request
   (POST/PUT) fails at the connection level (connection reset, socket hang-up) before an
   HTTP response arrives, it is retried once — **unless it places an order**. Order
-  placements (`place_order`, `close_position`, `close_by`, `close_all_positions`) are
-  never resent, because a dropped connection does not prove the server never received the
-  order, and resending could fill you twice. HTTP-level errors (4xx/5xx) are never
+  placements (the money-mover commits `place_order_commit`, `close_position_commit`,
+  `close_by_commit`, `close_all_positions_commit`) are never resent, because a dropped
+  connection does not prove the server never received the order, and resending could fill you
+  twice. HTTP-level errors (4xx/5xx) are never
   retried at the transport layer.
 
 ## Where next

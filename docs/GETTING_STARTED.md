@@ -60,12 +60,12 @@ The server runs in one of two modes, matching two kinds of users:
 
 **Broker administrator (admin mode).** You operate the Trade Server itself: you can see and
 manage every account, review and edit order routing, transfer cash, inspect liquidity
-connectors, and use the full market-data toolset — 38 tools with server-wide scope. You need an
+connectors, and use the full market-data toolset — 42 tools with server-wide scope. You need an
 **admin API key pair** (`YB_API_KEY` + `YB_SECRET_KEY`), which comes from your YourBourse server
 administration setup. If you manage the server, you (or your team) issue these keys.
 
 **Trader (client mode).** You trade your own account: place and manage orders, set stop loss
-and take profit, close positions, check balances, and pull quotes and candles — 26 tools, all
+and take profit, close positions, check balances, and pull quotes and candles — 30 tools, all
 scoped to your single account. You need either your **account login and password**
 (`YB_LOGIN` + `YB_PASSWORD`), or a **public API token pair** if your broker has issued you one.
 Both come from your broker. Client mode is the right choice for almost everyone who isn't
@@ -105,7 +105,7 @@ For a deeper look at each persona, see [Admin Mode](./ADMIN_MODE.md) and
 
 - [Configuration](./CONFIGURATION.md) — every environment variable, all config examples, every
   startup message
-- [Tools Reference](./TOOLS_REFERENCE.md) — all 26 client tools and 38 admin tools in detail
+- [Tools Reference](./TOOLS_REFERENCE.md) — all 30 client tools and 42 admin tools in detail
 - [Admin Mode](./ADMIN_MODE.md) — the broker administrator's guide
 - [Client Mode](./CLIENT_MODE.md) — the trader's guide
 - [Usage Examples](./USAGE_EXAMPLES.md) — realistic conversation patterns

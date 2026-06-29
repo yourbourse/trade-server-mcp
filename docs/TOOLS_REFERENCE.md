@@ -2,8 +2,8 @@
 
 The complete reference for every tool the Trade Server MCP exposes, in both modes:
 
-- **[Client mode](#client-mode-26-tools)** — 26 tools, all scoped to your own trading account.
-- **[Admin mode](#admin-mode-38-tools)** — 38 tools with server-wide scope, for broker
+- **[Client mode](#client-mode-30-tools)** — 30 tools, all scoped to your own trading account.
+- **[Admin mode](#admin-mode-42-tools)** — 42 tools with server-wide scope, for broker
   administrators.
 
 For each tool you'll find the description your AI sees (verbatim, as registered with the MCP
@@ -22,30 +22,37 @@ Setup is covered in [Getting Started](./GETTING_STARTED.md) and
 
 ---
 
-## Client mode (26 tools)
+## Client mode (30 tools)
 
 Every client-mode tool operates on **your account only** — there is no `accountId` parameter
 anywhere, because your sign-in token already identifies the account.
 
-### Trading (9 tools)
+### Trading (13 tools)
 
-#### `place_order`
+The four money-movers — placing an order, closing a position, a hedged close, and closing
+everything — are **confirm-before-execute**: each is a `*_plan` + `*_commit` pair. The `*_plan`
+tool validates the request and returns a plain-language preview (summary, live quote, free margin)
+plus a single-use `commitToken` (valid ~5 minutes) **without touching the market**; the `*_commit`
+tool takes only that token and executes the previewed order. Nothing reaches the market until you
+commit.
 
-> Place a new order on YOUR account. Supports Market, Limit, Stop, StopLimit and CloseBy types. For Market orders use timeInForce IOC or FOK. Limit/Stop orders require limitPrice/stopPrice. Optionally attach stopLoss, takeProfit and a comment. To close two opposite hedged positions against each other, prefer the close_by tool.
+#### `place_order_plan`
+
+> STEP 1 of placing an order — preview a new order on YOUR account WITHOUT executing. Validates the request and returns a plain-language summary, the live quote, your free margin, and a commitToken. Show the preview to the user; ONLY after they confirm, call place_order_commit with that token. If required details are missing (symbol, side, quantity, order type, time-in-force) it returns exactly what's needed instead of guessing. Nothing is sent to the market.
+
+All order parameters are optional at the plan step — if any required detail is missing, the tool reports exactly what's needed instead of guessing. On success it returns a `preview` (summary, live quote, free margin) and a single-use `commitToken`.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `symbol` | string | Yes | Symbol name, e.g. EURUSD |
-| `side` | `"buy"` \| `"sell"` | Yes | Order side |
-| `quantity` | number (positive) | Yes | Volume in lots, e.g. 0.1 |
-| `orderType` | `"Market"` \| `"Limit"` \| `"Stop"` \| `"StopLimit"` \| `"CloseBy"` | Yes | Order type |
-| `timeInForce` | `"FOK"` \| `"IOC"` \| `"GTC"` \| `"GTD"` \| `"Day"` \| `"Ms"` | Yes | Time in force. Use IOC or FOK for Market orders |
+| `symbol` | string | No | Symbol name, e.g. EURUSD |
+| `side` | `"buy"` \| `"sell"` | No | Order side |
+| `quantity` | number (positive) | No | Volume in lots, e.g. 0.1 |
+| `orderType` | `"Market"` \| `"Limit"` \| `"Stop"` \| `"StopLimit"` \| `"CloseBy"` | No | Order type |
+| `timeInForce` | `"FOK"` \| `"IOC"` \| `"GTC"` \| `"GTD"` \| `"Day"` \| `"Ms"` | No | Time in force. Use IOC or FOK for Market orders |
 | `limitPrice` | number | No | Limit price (for Limit/StopLimit) |
 | `stopPrice` | number | No | Stop price (for Stop/StopLimit) |
 | `stopLoss` | number | No | Stop loss price |
 | `takeProfit` | number | No | Take profit price |
-| `positionId` | number | No | Position ID (for closing a specific position) |
-| `positionById` | number | No | PositionBy ID (for CloseBy) |
 | `comment` | string | No | Order comment |
 
 Example:
@@ -60,6 +67,24 @@ Example:
   "stopLoss": 1.0750,
   "takeProfit": 1.0950,
   "comment": "breakout entry"
+}
+```
+
+#### `place_order_commit`
+
+> STEP 2 — execute the order previewed by place_order_plan. Requires the commitToken from that preview; the order is fixed at plan time and cannot be changed here. This places a LIVE order via an AI assistant — only call after the user has reviewed the preview and explicitly confirmed.
+
+Executes the order previewed by `place_order_plan`. Takes only the token; the order details were fixed at plan time.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `commitToken` | string | Yes | The commitToken returned by place_order_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_42_3kf9z2"
 }
 ```
 
@@ -139,13 +164,15 @@ Example:
 }
 ```
 
-#### `close_position`
+#### `close_position_plan`
 
-> Close one of your open positions (full or partial). Specify quantity for partial close, omit for full close. Places an opposite market order against the position.
+> STEP 1 of closing one of YOUR positions — preview WITHOUT executing; returns a commitToken. Needs positionId (optional quantity for a partial close). Show the preview; only after you confirm, call close_position_commit. Nothing is sent.
+
+Both parameters are optional at the plan step; if `positionId` is missing the tool reports what's needed. On success it returns a `preview` and a single-use `commitToken`.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `positionId` | number | Yes | Position ID to close |
+| `positionId` | number | No | Position ID to close |
 | `quantity` | number | No | Partial close volume in lots. Omit for full close |
 
 Example:
@@ -157,14 +184,34 @@ Example:
 }
 ```
 
-#### `close_by`
+#### `close_position_commit`
 
-> Close two of your opposite (hedged) positions against each other. Both must be on the same symbol with opposite sides; uses the smaller quantity. Only meaningful on hedging accounts.
+> STEP 2 — execute the close previewed by close_position_plan. Requires the commitToken. Places a LIVE closing order — only after you have reviewed the preview and confirmed.
+
+Executes the close previewed by `close_position_plan`. Takes only the token.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `positionId` | number | Yes | Position ID to close |
-| `positionById` | number | Yes | Opposite position ID to close against |
+| `commitToken` | string | Yes | The commitToken returned by close_position_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_43_8x1q0a"
+}
+```
+
+#### `close_by_plan`
+
+> STEP 1 of a hedged close (two opposite positions, same symbol) — preview WITHOUT executing; returns a commitToken. Needs positionId + positionById. Only meaningful on hedging accounts. Show the preview; only after you confirm, call close_by_commit. Nothing is sent.
+
+Both parameters are optional at the plan step; any missing required field is reported back. On success it returns a `preview` and a single-use `commitToken`.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `positionId` | number | No | Position ID to close |
+| `positionById` | number | No | Opposite position ID to close against |
 
 Example:
 
@@ -172,6 +219,24 @@ Example:
 {
   "positionId": 67890,
   "positionById": 67891
+}
+```
+
+#### `close_by_commit`
+
+> STEP 2 — execute the hedged close previewed by close_by_plan. Requires the commitToken. Places a LIVE close — only after you have reviewed the preview and confirmed.
+
+Executes the hedged close previewed by `close_by_plan`. Takes only the token.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `commitToken` | string | Yes | The commitToken returned by close_by_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_44_b2m7t5"
 }
 ```
 
@@ -191,9 +256,11 @@ Example:
 }
 ```
 
-#### `close_all_positions`
+#### `close_all_positions_plan`
 
-> Close ALL of your open positions in one call. Optionally filter by symbol. Useful for emergency flatten. Returns count of closed positions.
+> STEP 1 — preview closing ALL of YOUR open positions (optionally filtered by symbol) WITHOUT executing; returns a commitToken. High-impact. Show the preview; only after you confirm, call close_all_positions_commit. Nothing is sent.
+
+No required fields — a `commitToken` is always issued. On success it returns a `preview` and a single-use `commitToken`. High-impact: the disclosure names the blast radius.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -203,6 +270,24 @@ Example:
 
 ```json
 {}
+```
+
+#### `close_all_positions_commit`
+
+> STEP 2 — execute the close-all previewed by close_all_positions_plan. Requires the commitToken. LIVE and high-impact (closes every matching position) — only after you have reviewed the preview and confirmed.
+
+Executes the close-all previewed by `close_all_positions_plan`. Takes only the token.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `commitToken` | string | Yes | The commitToken returned by close_all_positions_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_45_q9w3e1"
+}
 ```
 
 ### Read trading (4 tools)
@@ -508,32 +593,39 @@ Client mode registers **1 MCP resource**:
 
 ---
 
-## Admin mode (38 tools)
+## Admin mode (42 tools)
 
 Admin-mode tools have **server-wide scope**: tools that act on an account take an `accountId`
 parameter, and read tools can query across all accounts. See [Admin Mode](./ADMIN_MODE.md) for
 the persona guide.
 
-### Trading (15 tools)
+### Trading (19 tools)
 
-#### `place_order`
+The four money-movers — placing an order, closing a position, a hedged close, and closing
+everything — are **confirm-before-execute**: each is a `*_plan` + `*_commit` pair. The `*_plan`
+tool validates the request (admin money-movers always need the target `accountId`) and returns a
+plain-language preview plus a single-use `commitToken` (valid ~5 minutes) **without touching the
+market**; the `*_commit` tool takes only that token and executes the previewed order. Nothing
+reaches the market until you commit.
 
-> Place a new order. Supports Market, Limit, Stop, StopLimit, and CloseBy types. For Market orders use timeInForce IOC or FOK. Limit/Stop orders require limitPrice/stopPrice respectively. Optionally attach stopLoss, takeProfit, and a comment.
+#### `place_order_plan`
+
+> STEP 1 of placing an order on a client account — preview WITHOUT executing. Validates and returns the order summary (including the target account) plus a commitToken; if required details are missing (account, symbol, side, quantity, order type, time-in-force) it returns exactly what's needed. Show the preview; only after the user confirms, call place_order_commit. Nothing is sent.
+
+All parameters are optional at the plan step — if any required detail (including `accountId`) is missing, the tool reports exactly what's needed instead of guessing. On success it returns a `preview` (summary naming the target account, and, where available, live quote and free margin) and a single-use `commitToken`.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `accountId` | number | Yes | Trading account ID (login) |
-| `symbol` | string | Yes | Symbol name, e.g. EURUSD |
-| `side` | `"buy"` \| `"sell"` | Yes | Order side |
-| `quantity` | number (positive) | Yes | Volume in lots, e.g. 0.1 |
-| `orderType` | `"Market"` \| `"Limit"` \| `"Stop"` \| `"StopLimit"` \| `"CloseBy"` | Yes | Order type |
-| `timeInForce` | `"FOK"` \| `"IOC"` \| `"GTC"` \| `"GTD"` \| `"Day"` \| `"Ms"` | Yes | Time in force. Use IOC or FOK for Market orders |
+| `accountId` | number | No | Trading account ID (login) |
+| `symbol` | string | No | Symbol name, e.g. EURUSD |
+| `side` | `"buy"` \| `"sell"` | No | Order side |
+| `quantity` | number (positive) | No | Volume in lots, e.g. 0.1 |
+| `orderType` | `"Market"` \| `"Limit"` \| `"Stop"` \| `"StopLimit"` \| `"CloseBy"` | No | Order type |
+| `timeInForce` | `"FOK"` \| `"IOC"` \| `"GTC"` \| `"GTD"` \| `"Day"` \| `"Ms"` | No | Time in force. Use IOC or FOK for Market orders |
 | `limitPrice` | number | No | Limit price (for Limit/StopLimit) |
 | `stopPrice` | number | No | Stop price (for Stop/StopLimit) |
 | `stopLoss` | number | No | Stop loss price |
 | `takeProfit` | number | No | Take profit price |
-| `positionId` | number | No | Position ID (for closing specific position) |
-| `positionById` | number | No | PositionBy ID (for CloseBy) |
 | `marginCheck` | boolean | No | Perform margin check. Default true |
 | `comment` | string | No | Order comment |
 
@@ -549,6 +641,24 @@ Example:
   "timeInForce": "GTC",
   "limitPrice": 1.0820,
   "takeProfit": 1.0950
+}
+```
+
+#### `place_order_commit`
+
+> STEP 2 — execute the order previewed by place_order_plan on the client account. Requires the commitToken from that preview. Places a LIVE order via an AI assistant — only call after the user has reviewed the preview and explicitly confirmed.
+
+Executes the order previewed by `place_order_plan`. Takes only the token; the order details (including the target account) were fixed at plan time.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `commitToken` | string | Yes | The commitToken returned by place_order_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_51_7h2k9d"
 }
 ```
 
@@ -627,14 +737,16 @@ Example:
 }
 ```
 
-#### `close_position`
+#### `close_position_plan`
 
-> Close an open position (full or partial). Specify quantity for partial close, omit for full close. Internally places an opposite market order against the position.
+> STEP 1 — preview closing a client account's position WITHOUT executing; returns a commitToken. Needs accountId + positionId (optional quantity for a partial close). Show the preview; only after the user confirms, call close_position_commit. Nothing is sent.
+
+All parameters are optional at the plan step; if `accountId` or `positionId` is missing the tool reports what's needed. On success it returns a `preview` and a single-use `commitToken`.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `accountId` | number | Yes | Trading account ID |
-| `positionId` | number | Yes | Position ID to close |
+| `accountId` | number | No | Trading account ID |
+| `positionId` | number | No | Position ID to close |
 | `quantity` | number | No | Partial close volume in lots. Omit for full close |
 
 Example:
@@ -643,6 +755,24 @@ Example:
 {
   "accountId": 12345,
   "positionId": 67890
+}
+```
+
+#### `close_position_commit`
+
+> STEP 2 — execute the close previewed by close_position_plan. Requires the commitToken. Places a LIVE closing order — only after explicit user confirmation.
+
+Executes the close previewed by `close_position_plan`. Takes only the token.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `commitToken` | string | Yes | The commitToken returned by close_position_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_52_a4d8m2"
 }
 ```
 
@@ -729,13 +859,15 @@ Example:
 }
 ```
 
-#### `close_all_positions`
+#### `close_all_positions_plan`
 
-> Close all open positions on an account in one call. Optionally filter by symbol. Useful for test cleanup or emergency flatten. Returns count of closed positions.
+> STEP 1 — preview closing ALL of a client account's open positions (optionally filtered by symbol) WITHOUT executing; returns a commitToken. High-impact — needs accountId. Show the preview; only after the user confirms, call close_all_positions_commit. Nothing is sent.
+
+Both parameters are optional at the plan step; if `accountId` is missing the tool reports what's needed. On success it returns a `preview` and a single-use `commitToken`. High-impact: the disclosure names the blast radius.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `accountId` | number | Yes | Trading account ID |
+| `accountId` | number | No | Trading account ID |
 | `symbol` | string | No | Only close positions for this symbol |
 
 Example:
@@ -746,15 +878,35 @@ Example:
 }
 ```
 
-#### `close_by`
+#### `close_all_positions_commit`
 
-> Close two opposite (hedged) positions against each other. Both positions must be on the same symbol with opposite sides. Uses the smaller quantity. Common MT5 operation for hedge accounts.
+> STEP 2 — execute the close-all previewed by close_all_positions_plan. Requires the commitToken. LIVE and high-impact (closes every matching position) — only after explicit user confirmation.
+
+Executes the close-all previewed by `close_all_positions_plan`. Takes only the token.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `accountId` | number | Yes | Trading account ID |
-| `positionId` | number | Yes | Position ID to close |
-| `positionById` | number | Yes | Opposite position ID to close against |
+| `commitToken` | string | Yes | The commitToken returned by close_all_positions_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_53_c1v6n8"
+}
+```
+
+#### `close_by_plan`
+
+> STEP 1 — preview a hedged close (two opposite positions on the same symbol) on a client account WITHOUT executing; returns a commitToken. Needs accountId + positionId + positionById. Show the preview; only after the user confirms, call close_by_commit. Nothing is sent.
+
+All parameters are optional at the plan step; any missing required field is reported back. On success it returns a `preview` and a single-use `commitToken`.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `accountId` | number | No | Trading account ID |
+| `positionId` | number | No | Position ID to close |
+| `positionById` | number | No | Opposite position ID to close against |
 
 Example:
 
@@ -763,6 +915,24 @@ Example:
   "accountId": 12345,
   "positionId": 67890,
   "positionById": 67891
+}
+```
+
+#### `close_by_commit`
+
+> STEP 2 — execute the hedged close previewed by close_by_plan. Requires the commitToken. Places a LIVE close — only after explicit user confirmation.
+
+Executes the hedged close previewed by `close_by_plan`. Takes only the token.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `commitToken` | string | Yes | The commitToken returned by close_by_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_54_e9r2u4"
 }
 ```
 
@@ -1261,7 +1431,7 @@ matter in practice:
 - **`get_conversion_rate` group context.** Admin mode requires an explicit `groupId`; client
   mode uses your account's group automatically.
 
-- **`marginCheck` is admin-only.** Admin `place_order` can disable the margin check
+- **`marginCheck` is admin-only.** Admin `place_order_plan` can disable the margin check
   (`marginCheck: false`); client orders are always margin-checked by the server.
 
 - **Client-only tool:** `get_limits` (your session's API rate limits) exists only in client

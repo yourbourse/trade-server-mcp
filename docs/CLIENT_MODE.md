@@ -1,8 +1,8 @@
 # Client Mode — the Trader's Guide
 
 Client mode is for **traders**: you have a trading account with a broker who runs a YourBourse
-Trade Server, and you want your AI to monitor it and trade on it. It exposes **26 tools and
-1 MCP resource** (see the [Tools Reference](./TOOLS_REFERENCE.md#client-mode-26-tools) for
+Trade Server, and you want your AI to monitor it and trade on it. It exposes **30 tools and
+1 MCP resource** (see the [Tools Reference](./TOOLS_REFERENCE.md#client-mode-30-tools) for
 every parameter and example).
 
 ## The scoping model: your token *is* your account
@@ -61,6 +61,16 @@ sign-in succeeds. More symptom-by-symptom help is in
 
 These are deliberate design decisions, in plain language:
 
+- **Nothing executes until you confirm.** The four money-movers — placing an order, closing a
+  position, a hedged close, and closing everything — are each split into a **preview** step and a
+  **commit** step. When you ask to trade, the AI calls the `*_plan` tool first: it validates the
+  request and returns a plain-language summary, the live quote, and your free margin, **without
+  touching the market**, along with a single-use `commitToken` that is good for five minutes. You
+  review the preview; only after you confirm does the AI call the matching `*_commit` tool with
+  that token to actually place the order. If your instruction was missing a detail (say, no order
+  type), the plan step tells you exactly what's needed instead of guessing. There is no way to
+  place or close an order in a single un-confirmed step.
+
 - **Order placements are never retried automatically.** If the connection drops while an
   order is being placed, the MCP does *not* resend it — a dropped connection doesn't prove
   the server never received the order, and resending could fill you **twice**. If a
@@ -110,7 +120,7 @@ account, and nothing more.
 
 ## Where next
 
-- [Tools Reference](./TOOLS_REFERENCE.md) — all 26 client tools with parameters and examples
+- [Tools Reference](./TOOLS_REFERENCE.md) — all 30 client tools with parameters and examples
 - [Configuration](./CONFIGURATION.md) — credential setup for both client credential styles
 - [Authentication](./AUTHENTICATION.md) — how sign-in, signing, and refresh work under the hood
 - [Security](./SECURITY.md) — credential-handling guarantees and recommendations

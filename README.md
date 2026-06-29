@@ -9,7 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-7C3AED)](https://modelcontextprotocol.io/)
-![Tests](https://img.shields.io/badge/tests-85%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-137%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 
 <br>
@@ -67,7 +67,7 @@ Claude in about 10 minutes, with no coding.
 | Feature | Description |
 |---------|-------------|
 | **Two modes, one server** | **Client mode** for traders (scoped to your own account) and **admin mode** for broker operations (server-wide) — selected by the credentials you configure |
-| **26 trader tools / 38 broker tools** | Task-shaped tools covering trading, account monitoring, market data, and (admin) server configuration, plus MCP resources for static context |
+| **30 trader tools / 42 broker tools** | Task-shaped tools covering trading, account monitoring, market data, and (admin) server configuration, plus MCP resources for static context |
 | **Live trading** | Market, Limit, Stop, StopLimit, and CloseBy orders with optional SL/TP; modify, cancel, partial close, flatten-everything composites |
 | **Account monitoring** | Balance, equity, margin, unrealized P/L, open positions, working orders, trade and transfer history — single calls or one-shot summaries |
 | **Market data & indicators** | Quotes, market depth, OHLCV candles, currency conversion; admin mode adds locally computed indicators (RSI, MACD, EMA, Bollinger Bands, and more) |
@@ -126,7 +126,7 @@ One process runs exactly one mode — the tool set is decided at startup from yo
 |---|---|---|
 | **Who it's for** | A trader with an account at a broker running a YourBourse Trade Server | The broker: operations and administration teams |
 | **Scope** | Your own account only — the session token *is* the scope, enforced by the server | Server-wide: every account, group, client, routing rule, and liquidity connector |
-| **Tools / resources** | 26 tools, 1 resource | 38 tools, 4 resources |
+| **Tools / resources** | 30 tools, 1 resource | 42 tools, 4 resources |
 | **Credentials** | `YB_LOGIN` + `YB_PASSWORD` (or a pre-issued token pair) | `YB_API_KEY` + `YB_SECRET_KEY` from the server admin panel |
 | **Trading** | On your account; no account parameter exists | On behalf of any account via `accountId` |
 | **Extras** | Rate-limit visibility, scoped balances | Cash transfers, order routing management, indicators, L1/L2 over WebSocket |
@@ -188,7 +188,7 @@ Full guides: [Client Mode](docs/CLIENT_MODE.md) · [Admin Mode](docs/ADMIN_MODE.
                     v                               v
          +--------------------+         +---------------------+
          | register-admin.ts  |         | register-client.ts  |
-         | 38 tools, 4 res.   |         | 26 tools, 1 res.    |
+         | 42 tools, 4 res.   |         | 30 tools, 1 res.    |
          +---------+----------+         +----------+----------+
                    |                               |
                    v                               v
@@ -235,8 +235,8 @@ trade-server-mcp/
 ├── src/
 │   ├── index.ts               # Entry point: config → mode → register → stdio transport
 │   ├── config.ts              # Env parsing, mode selection & inference
-│   ├── register-admin.ts      # Registers the 38 admin tools + 4 resources
-│   ├── register-client.ts     # Registers the 26 client tools + 1 resource
+│   ├── register-admin.ts      # Registers the 42 admin tools + 4 resources
+│   ├── register-client.ts     # Registers the 30 client tools + 1 resource
 │   ├── tool-handler.ts        # Wraps tool results/errors for MCP
 │   ├── rest-client.ts         # Signed REST client (HMAC, retries, ETag, error mapping)
 │   ├── ws-client.ts           # WebSocket quotes/depth client (admin only)

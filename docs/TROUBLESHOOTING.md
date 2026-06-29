@@ -175,9 +175,10 @@ you have, ask your broker. See
 
 ## An order failed with a connection error and was not retried
 
-**Symptom:** a `place_order`, `close_position`, `close_by`, or `close_all_positions` call
-failed with a connection-level error (`fetch failed`, `socket hang up`, `ECONNRESET`) and the
-MCP did **not** resend it, even though other calls retry such errors automatically.
+**Symptom:** a money-mover commit (`place_order_commit`, `close_position_commit`,
+`close_by_commit`, or `close_all_positions_commit`) failed with a connection-level error
+(`fetch failed`, `socket hang up`, `ECONNRESET`) and the MCP did **not** resend it, even though
+other calls retry such errors automatically.
 
 This is the duplicate-fill protection, and it is intentional: a dropped connection does not
 prove the server never received the order. If the order *was* received and filled, resending
