@@ -33,6 +33,14 @@ test("closePositionSchema (commit) also rejects non-positive quantity (Copilot #
   assert.doesNotThrow(() => t.closePositionSchema.parse({ positionId: 1, quantity: 0.5 }));
 });
 
+test("plan completeness messages name the *_plan tool, not the removed one-shot tool (Copilot #A)", async () => {
+  const fake = { get: async () => ({}), post: async () => ({}) } as never;
+  const po = (await t.placeOrderPlan(fake, { symbol: "EURUSD" })) as { needMoreInfo?: string };
+  assert.match(po.needMoreInfo!, /place_order_plan/);
+  const cp = (await t.closePositionPlan(fake, {})) as { needMoreInfo?: string };
+  assert.match(cp.needMoreInfo!, /close_position_plan/);
+});
+
 test("placeOrder POSTs /order with terse keys, no A, no mc", async () => {
   await t.placeOrder(client(), {
     symbol: "EURUSD",

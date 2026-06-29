@@ -29,6 +29,14 @@ test("admin closePositionSchema (commit) also rejects non-positive quantity (Cop
   );
 });
 
+test("admin plan completeness messages name the *_plan tool, not the removed one-shot tool (Copilot #C)", async () => {
+  const fake = { get: async () => ({}), post: async () => ({}) } as never;
+  const po = (await at.placeOrderPlan(fake, { symbol: "EURUSD" })) as { needMoreInfo?: string };
+  assert.match(po.needMoreInfo!, /place_order_plan/);
+  const ca = (await at.closeAllPositionsPlan(fake, {})) as { needMoreInfo?: string };
+  assert.match(ca.needMoreInfo!, /close_all_positions_plan/);
+});
+
 test("admin placeOrder does NOT retry on a connection error (duplicate-fill protection)", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {

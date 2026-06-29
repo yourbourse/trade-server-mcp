@@ -73,7 +73,7 @@ export async function placeOrderPlan(
   client: RestClient,
   params: z.infer<typeof placeOrderPlanSchema>,
 ) {
-  const need = completenessMessage("place_order", params, [
+  const need = completenessMessage("place_order_plan", params, [
     { name: "symbol", label: "symbol" },
     { name: "side", label: "side", options: ["buy", "sell"] },
     { name: "quantity", label: "quantity (lots)" },
@@ -436,7 +436,7 @@ export async function closePositionPlan(
   client: RestClient,
   params: z.infer<typeof closePositionPlanSchema>,
 ) {
-  const need = completenessMessage("close_position", params, [
+  const need = completenessMessage("close_position_plan", params, [
     { name: "positionId", label: "position ID" },
   ]);
   if (need) return { needMoreInfo: need };
@@ -469,7 +469,7 @@ const CLOSE_BY_DISCLOSURE =
   "You are confirming a LIVE hedged close via an AI assistant. Review the details, then call close_by_commit with this commitToken to execute. Nothing is sent until you commit.";
 
 export async function closeByPlan(client: RestClient, params: z.infer<typeof closeByPlanSchema>) {
-  const need = completenessMessage("close_by", params, [
+  const need = completenessMessage("close_by_plan", params, [
     { name: "positionId", label: "position ID" },
     { name: "positionById", label: "opposite position ID" },
   ]);

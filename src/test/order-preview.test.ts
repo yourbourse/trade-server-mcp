@@ -68,3 +68,19 @@ test("preview echoes margin-check OFF so the confirmer sees a bypassed margin ch
   });
   assert.doesNotMatch(on.summary, /margin check/i);
 });
+
+test("StopLimit preview shows BOTH limit and stop prices, not just one (Copilot #B)", async () => {
+  const client = { get: async () => ({}), post: async () => ({}) } as never;
+  const p = await buildOrderPreview(client, {
+    action: "place",
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "StopLimit",
+    timeInForce: "GTC",
+    limitPrice: 1.105,
+    stopPrice: 1.1,
+  });
+  assert.match(p.summary, /1\.105/); // limit price
+  assert.match(p.summary, /stop 1\.1/i); // stop trigger must not be hidden from the confirmer
+});

@@ -34,11 +34,20 @@ function humanSummary(o: OrderSummary): string {
   } else if (o.action === "close") {
     base = `Close position ${o.positionId}${o.quantity ? ` (${o.quantity} lots)` : " (full)"}`;
   } else {
-    const px = o.limitPrice ?? o.stopPrice;
+    // Show every price the order carries. A StopLimit has BOTH a limit and a stop trigger, and
+    // both are safety-relevant — hiding the stop would let a user confirm a preview that omits it.
+    const pricePhrase =
+      o.limitPrice !== undefined && o.stopPrice !== undefined
+        ? `@ ${o.limitPrice} (stop ${o.stopPrice})`
+        : o.limitPrice !== undefined
+          ? `@ ${o.limitPrice}`
+          : o.stopPrice !== undefined
+            ? `stop @ ${o.stopPrice}`
+            : "@ market";
     const parts = [
       `${(o.side ?? "").toUpperCase()} ${o.quantity} ${o.symbol}`,
       o.orderType,
-      px !== undefined ? `@ ${px}` : "@ market",
+      pricePhrase,
       o.timeInForce,
     ].filter(Boolean);
     const sltp = [o.stopLoss ? `SL ${o.stopLoss}` : "", o.takeProfit ? `TP ${o.takeProfit}` : ""]
