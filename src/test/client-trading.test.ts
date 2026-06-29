@@ -387,3 +387,101 @@ test("place_order_commit runs the stored order exactly once, then rejects reuse"
     /No pending order/,
   );
 });
+
+// ===== close_position / close_by / close_all_positions preview/commit (E1a) =====
+test("close_position_plan previews + tokenizes without closing; missing positionId asks", async () => {
+  let writes = 0;
+  const fake = {
+    get: async () => ({}),
+    post: async (path: string) => {
+      if (path === "/order" || path === "/positions") writes++;
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const ok = (await t.closePositionPlan(fake, { positionId: 3 })) as {
+    commitToken?: string;
+    preview?: { summary: string };
+  };
+  assert.ok(ok.commitToken);
+  assert.match(ok.preview!.summary, /Close position 3/);
+  assert.equal(writes, 0); // plan must not query positions or place the closing order
+  const miss = (await t.closePositionPlan(fake, {})) as { needMoreInfo?: string };
+  assert.match(miss.needMoreInfo!, /position ID/);
+});
+
+test("close_position_commit closes the stored position once, then rejects reuse", async () => {
+  const fake = {
+    get: async () => ({}),
+    post: async (path: string) => {
+      if (path === "/positions") return { positions: [{ id: 3, s: "EURUSD", S: "buy", q: 2 }] };
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const plan = (await t.closePositionPlan(fake, { positionId: 3 })) as { commitToken: string };
+  await t.closePositionCommit(fake, { commitToken: plan.commitToken }); // executes without throwing
+  await assert.rejects(
+    t.closePositionCommit(fake, { commitToken: plan.commitToken }),
+    /No pending order/,
+  );
+});
+
+test("close_by_plan requires both ids then tokenizes", async () => {
+  const fake = { get: async () => ({}), post: async () => ({ e: 1, m: 0 }) } as never;
+  const miss = (await t.closeByPlan(fake, { positionId: 1 })) as { needMoreInfo?: string };
+  assert.match(miss.needMoreInfo!, /opposite position ID/);
+  const ok = (await t.closeByPlan(fake, { positionId: 1, positionById: 2 })) as {
+    commitToken?: string;
+    preview?: { summary: string };
+  };
+  assert.ok(ok.commitToken);
+  assert.match(ok.preview!.summary, /Close position 1 against 2/);
+});
+
+test("close_by_commit executes once, then rejects reuse", async () => {
+  const fake = {
+    get: async () => ({}),
+    post: async (path: string) => {
+      if (path === "/positions")
+        return {
+          positions: [
+            { id: 1, s: "EURUSD", S: "buy", q: 2 },
+            { id: 2, s: "EURUSD", S: "sell", q: 1 },
+          ],
+        };
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const plan = (await t.closeByPlan(fake, { positionId: 1, positionById: 2 })) as {
+    commitToken: string;
+  };
+  await t.closeByCommit(fake, { commitToken: plan.commitToken });
+  await assert.rejects(t.closeByCommit(fake, { commitToken: plan.commitToken }), /No pending order/);
+});
+
+test("close_all_positions_plan tokenizes with a high-impact disclosure (no required fields)", async () => {
+  const fake = { get: async () => ({}), post: async () => ({ e: 1, m: 0 }) } as never;
+  const r = (await t.closeAllPositionsPlan(fake, {})) as {
+    commitToken?: string;
+    preview?: { summary: string };
+    disclosure?: string;
+  };
+  assert.ok(r.commitToken);
+  assert.match(r.preview!.summary, /Close ALL/i);
+  assert.match(r.disclosure!, /ALL/);
+});
+
+test("close_all_positions_commit executes once, then rejects reuse", async () => {
+  const fake = {
+    get: async () => ({}),
+    post: async (path: string) => {
+      if (path === "/positions") return { positions: [{ id: 1, s: "EURUSD", S: "buy", q: 1 }] };
+      return path === "/account/state" ? { e: 1, m: 0 } : {};
+    },
+  } as never;
+  const plan = (await t.closeAllPositionsPlan(fake, {})) as { commitToken: string };
+  await t.closeAllPositionsCommit(fake, { commitToken: plan.commitToken });
+  await assert.rejects(
+    t.closeAllPositionsCommit(fake, { commitToken: plan.commitToken }),
+    /No pending order/,
+  );
+});

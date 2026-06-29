@@ -412,3 +412,105 @@ export async function closeAllPositions(
     results,
   };
 }
+
+// ===== close_position / close_by / close_all_positions preview/commit (E1a) =====
+// Same shape as place_order: *_plan validates + previews + tokenizes WITHOUT executing;
+// *_commit consumes the token and runs the unchanged close fn above.
+
+export const closePositionPlanSchema = z.object({
+  positionId: z.number().optional().describe("Position ID to close"),
+  quantity: z.number().optional().describe("Partial close volume in lots. Omit for full close"),
+});
+const CLOSE_POSITION_DISCLOSURE =
+  "You are confirming a LIVE position close via an AI assistant. Review the details, then call close_position_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function closePositionPlan(
+  client: RestClient,
+  params: z.infer<typeof closePositionPlanSchema>,
+) {
+  const need = completenessMessage("close_position", params, [
+    { name: "positionId", label: "position ID" },
+  ]);
+  if (need) return { needMoreInfo: need };
+  const preview = await buildOrderPreview(client, {
+    action: "close",
+    positionId: params.positionId,
+    quantity: params.quantity,
+  });
+  const commitToken = issuePlan(params);
+  return { preview, commitToken, disclosure: CLOSE_POSITION_DISCLOSURE };
+}
+
+export const closePositionCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by close_position_plan"),
+});
+
+export async function closePositionCommit(
+  client: RestClient,
+  params: z.infer<typeof closePositionCommitSchema>,
+) {
+  const order = closePositionSchema.parse(takeCommit(params.commitToken));
+  return closePosition(client, order);
+}
+
+export const closeByPlanSchema = z.object({
+  positionId: z.number().optional().describe("Position ID to close"),
+  positionById: z.number().optional().describe("Opposite position ID to close against"),
+});
+const CLOSE_BY_DISCLOSURE =
+  "You are confirming a LIVE hedged close via an AI assistant. Review the details, then call close_by_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function closeByPlan(client: RestClient, params: z.infer<typeof closeByPlanSchema>) {
+  const need = completenessMessage("close_by", params, [
+    { name: "positionId", label: "position ID" },
+    { name: "positionById", label: "opposite position ID" },
+  ]);
+  if (need) return { needMoreInfo: need };
+  const preview = await buildOrderPreview(client, {
+    action: "close_by",
+    positionId: params.positionId,
+    positionById: params.positionById,
+  });
+  const commitToken = issuePlan(params);
+  return { preview, commitToken, disclosure: CLOSE_BY_DISCLOSURE };
+}
+
+export const closeByCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by close_by_plan"),
+});
+
+export async function closeByCommit(
+  client: RestClient,
+  params: z.infer<typeof closeByCommitSchema>,
+) {
+  const order = closeBySchema.parse(takeCommit(params.commitToken));
+  return closeBy(client, order);
+}
+
+export const closeAllPositionsPlanSchema = z.object({
+  symbol: z.string().optional().describe("Only close positions for this symbol"),
+});
+const CLOSE_ALL_DISCLOSURE =
+  "You are confirming that an AI assistant will CLOSE ALL of your open positions (optionally filtered by symbol). This is high-impact — review carefully. Call close_all_positions_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function closeAllPositionsPlan(
+  client: RestClient,
+  params: z.infer<typeof closeAllPositionsPlanSchema>,
+) {
+  // No required fields — a token is always issued; the disclosure names the blast radius.
+  const preview = await buildOrderPreview(client, { action: "close_all", symbol: params.symbol });
+  const commitToken = issuePlan(params);
+  return { preview, commitToken, disclosure: CLOSE_ALL_DISCLOSURE };
+}
+
+export const closeAllPositionsCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by close_all_positions_plan"),
+});
+
+export async function closeAllPositionsCommit(
+  client: RestClient,
+  params: z.infer<typeof closeAllPositionsCommitSchema>,
+) {
+  const order = closeAllPositionsSchema.parse(takeCommit(params.commitToken));
+  return closeAllPositions(client, order);
+}
