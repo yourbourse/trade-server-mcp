@@ -8,6 +8,7 @@ import type { RestClient } from "../rest-client.js";
 
 export type OrderSummary = {
   action: "place" | "close" | "close_all" | "close_by";
+  accountId?: number; // admin mode only — names the target account in the echo
   symbol?: string;
   side?: string;
   quantity?: number;
@@ -24,23 +25,27 @@ export type OrderSummary = {
 export type Preview = { summary: string; quote?: unknown; freeMargin?: number; note?: string };
 
 function humanSummary(o: OrderSummary): string {
-  if (o.action === "close_all")
-    return `Close ALL open positions${o.symbol ? ` for ${o.symbol}` : ""}.`;
-  if (o.action === "close_by")
-    return `Close position ${o.positionId} against ${o.positionById} (hedged close).`;
-  if (o.action === "close")
-    return `Close position ${o.positionId}${o.quantity ? ` (${o.quantity} lots)` : " (full)"}.`;
-  const px = o.limitPrice ?? o.stopPrice;
-  const parts = [
-    `${(o.side ?? "").toUpperCase()} ${o.quantity} ${o.symbol}`,
-    o.orderType,
-    px !== undefined ? `@ ${px}` : "@ market",
-    o.timeInForce,
-  ].filter(Boolean);
-  const sltp = [o.stopLoss ? `SL ${o.stopLoss}` : "", o.takeProfit ? `TP ${o.takeProfit}` : ""]
-    .filter(Boolean)
-    .join(", ");
-  return `${parts.join(" ")}${sltp ? ` (${sltp})` : ""}.`;
+  let base: string;
+  if (o.action === "close_all") {
+    base = `Close ALL open positions${o.symbol ? ` for ${o.symbol}` : ""}`;
+  } else if (o.action === "close_by") {
+    base = `Close position ${o.positionId} against ${o.positionById} (hedged close)`;
+  } else if (o.action === "close") {
+    base = `Close position ${o.positionId}${o.quantity ? ` (${o.quantity} lots)` : " (full)"}`;
+  } else {
+    const px = o.limitPrice ?? o.stopPrice;
+    const parts = [
+      `${(o.side ?? "").toUpperCase()} ${o.quantity} ${o.symbol}`,
+      o.orderType,
+      px !== undefined ? `@ ${px}` : "@ market",
+      o.timeInForce,
+    ].filter(Boolean);
+    const sltp = [o.stopLoss ? `SL ${o.stopLoss}` : "", o.takeProfit ? `TP ${o.takeProfit}` : ""]
+      .filter(Boolean)
+      .join(", ");
+    base = `${parts.join(" ")}${sltp ? ` (${sltp})` : ""}`;
+  }
+  return `${o.accountId ? `[account ${o.accountId}] ` : ""}${base}.`;
 }
 
 export async function buildOrderPreview(client: RestClient, o: OrderSummary): Promise<Preview> {
