@@ -37,6 +37,25 @@ test("admin plan completeness messages name the *_plan tool, not the removed one
   assert.match(ca.needMoreInfo!, /close_all_positions_plan/);
 });
 
+test("admin place_order no longer offers CloseBy or position-ID fields; hedged closes use close_by (Copilot)", () => {
+  assert.throws(() =>
+    at.placeOrderSchema.parse({
+      accountId: 1,
+      symbol: "EURUSD",
+      side: "buy",
+      quantity: 0.1,
+      orderType: "CloseBy",
+      timeInForce: "IOC",
+    }),
+  );
+  assert.throws(() => at.placeOrderPlanSchema.parse({ orderType: "CloseBy" }));
+  assert.ok(!("positionId" in at.placeOrderSchema.shape));
+  assert.ok(!("positionById" in at.placeOrderSchema.shape));
+  assert.doesNotThrow(() =>
+    at.closeByPlanSchema.parse({ accountId: 1, positionId: 1, positionById: 2 }),
+  );
+});
+
 test("admin placeOrder does NOT retry on a connection error (duplicate-fill protection)", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {

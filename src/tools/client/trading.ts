@@ -13,7 +13,7 @@ export const placeOrderSchema = z.object({
   symbol: z.string().describe("Symbol name, e.g. EURUSD"),
   side: z.enum(["buy", "sell"]).describe("Order side"),
   quantity: z.number().positive().describe("Volume in lots, e.g. 0.1"),
-  orderType: z.enum(["Market", "Limit", "Stop", "StopLimit", "CloseBy"]).describe("Order type"),
+  orderType: z.enum(["Market", "Limit", "Stop", "StopLimit"]).describe("Order type"),
   timeInForce: z
     .enum(["FOK", "IOC", "GTC", "GTD", "Day", "Ms"])
     .describe("Time in force. Use IOC or FOK for Market orders"),
@@ -21,8 +21,6 @@ export const placeOrderSchema = z.object({
   stopPrice: z.number().optional().describe("Stop price (for Stop/StopLimit)"),
   stopLoss: z.number().optional().describe("Stop loss price"),
   takeProfit: z.number().optional().describe("Take profit price"),
-  positionId: z.number().optional().describe("Position ID (for closing a specific position)"),
-  positionById: z.number().optional().describe("PositionBy ID (for CloseBy)"),
   comment: z.string().optional().describe("Order comment"),
 });
 
@@ -38,8 +36,6 @@ export async function placeOrder(client: RestClient, params: z.infer<typeof plac
   if (params.stopPrice !== undefined) body.sp = params.stopPrice;
   if (params.stopLoss !== undefined) body.sl = params.stopLoss;
   if (params.takeProfit !== undefined) body.tp = params.takeProfit;
-  if (params.positionId !== undefined) body.pi = params.positionId;
-  if (params.positionById !== undefined) body.pbi = params.positionById;
   if (params.comment !== undefined) body.ct = params.comment;
   return client.post("/order", body, NO_TRANSPORT_RETRY);
 }
@@ -51,10 +47,7 @@ export const placeOrderPlanSchema = z.object({
   symbol: z.string().optional().describe("Symbol name, e.g. EURUSD"),
   side: z.enum(["buy", "sell"]).optional().describe("Order side"),
   quantity: z.number().positive().optional().describe("Volume in lots, e.g. 0.1"),
-  orderType: z
-    .enum(["Market", "Limit", "Stop", "StopLimit", "CloseBy"])
-    .optional()
-    .describe("Order type"),
+  orderType: z.enum(["Market", "Limit", "Stop", "StopLimit"]).optional().describe("Order type"),
   timeInForce: z
     .enum(["FOK", "IOC", "GTC", "GTD", "Day", "Ms"])
     .optional()

@@ -41,6 +41,25 @@ test("plan completeness messages name the *_plan tool, not the removed one-shot 
   assert.match(cp.needMoreInfo!, /close_position_plan/);
 });
 
+test("place_order no longer offers CloseBy or position-ID fields; hedged closes use close_by (Copilot)", () => {
+  // CloseBy is rejected by both the commit and plan schemas
+  assert.throws(() =>
+    t.placeOrderSchema.parse({
+      symbol: "EURUSD",
+      side: "buy",
+      quantity: 0.1,
+      orderType: "CloseBy",
+      timeInForce: "IOC",
+    }),
+  );
+  assert.throws(() => t.placeOrderPlanSchema.parse({ orderType: "CloseBy" }));
+  // the vestigial close-machinery fields are gone from the commit schema
+  assert.ok(!("positionId" in t.placeOrderSchema.shape));
+  assert.ok(!("positionById" in t.placeOrderSchema.shape));
+  // hedged closes still have their dedicated home
+  assert.doesNotThrow(() => t.closeByPlanSchema.parse({ positionId: 1, positionById: 2 }));
+});
+
 test("placeOrder POSTs /order with terse keys, no A, no mc", async () => {
   await t.placeOrder(client(), {
     symbol: "EURUSD",
@@ -296,8 +315,6 @@ test("placeOrder maps every optional field to its terse key", async () => {
     stopPrice: 1.2,
     stopLoss: 1.05,
     takeProfit: 1.3,
-    positionId: 7,
-    positionById: 8,
     comment: "hi",
   });
   assert.deepEqual(JSON.parse(captured[0].body!), {
@@ -310,8 +327,6 @@ test("placeOrder maps every optional field to its terse key", async () => {
     sp: 1.2,
     sl: 1.05,
     tp: 1.3,
-    pi: 7,
-    pbi: 8,
     ct: "hi",
   });
 });

@@ -47,7 +47,7 @@ All order parameters are optional at the plan step — if any required detail is
 | `symbol` | string | No | Symbol name, e.g. EURUSD |
 | `side` | `"buy"` \| `"sell"` | No | Order side |
 | `quantity` | number (positive) | No | Volume in lots, e.g. 0.1 |
-| `orderType` | `"Market"` \| `"Limit"` \| `"Stop"` \| `"StopLimit"` \| `"CloseBy"` | No | Order type |
+| `orderType` | `"Market"` \| `"Limit"` \| `"Stop"` \| `"StopLimit"` | No | Order type |
 | `timeInForce` | `"FOK"` \| `"IOC"` \| `"GTC"` \| `"GTD"` \| `"Day"` \| `"Ms"` | No | Time in force. Use IOC or FOK for Market orders |
 | `limitPrice` | number | No | Limit price (for Limit/StopLimit) |
 | `stopPrice` | number | No | Stop price (for Stop/StopLimit) |
@@ -620,7 +620,7 @@ All parameters are optional at the plan step — if any required detail (includi
 | `symbol` | string | No | Symbol name, e.g. EURUSD |
 | `side` | `"buy"` \| `"sell"` | No | Order side |
 | `quantity` | number (positive) | No | Volume in lots, e.g. 0.1 |
-| `orderType` | `"Market"` \| `"Limit"` \| `"Stop"` \| `"StopLimit"` \| `"CloseBy"` | No | Order type |
+| `orderType` | `"Market"` \| `"Limit"` \| `"Stop"` \| `"StopLimit"` | No | Order type |
 | `timeInForce` | `"FOK"` \| `"IOC"` \| `"GTC"` \| `"GTD"` \| `"Day"` \| `"Ms"` | No | Time in force. Use IOC or FOK for Market orders |
 | `limitPrice` | number | No | Limit price (for Limit/StopLimit) |
 | `stopPrice` | number | No | Stop price (for Stop/StopLimit) |
