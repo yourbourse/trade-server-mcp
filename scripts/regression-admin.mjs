@@ -90,13 +90,19 @@ try {
   const names = new Set(tools.map((t) => t.name));
 
   if (MODE === "admin") {
-    check("tools/list count == 38", tools.length === 38, `got ${tools.length}`);
-    for (const n of ["place_order", "cash_transfer", "get_order_routing", "get_indicator"]) {
+    check("tools/list count == 42", tools.length === 42, `got ${tools.length}`);
+    for (const n of [
+      "place_order_plan",
+      "place_order_commit",
+      "cash_transfer",
+      "get_order_routing",
+      "get_indicator",
+    ]) {
       check(`tool present: ${n}`, names.has(n));
     }
-    const placeOrder = tools.find((t) => t.name === "place_order");
-    check("place_order inputSchema has accountId (admin mode)",
-      !!placeOrder?.inputSchema?.properties?.accountId);
+    const placeOrderPlan = tools.find((t) => t.name === "place_order_plan");
+    check("place_order_plan inputSchema has accountId (admin mode)",
+      !!placeOrderPlan?.inputSchema?.properties?.accountId);
 
     const health = await request(3, "tools/call", { name: "health_check", arguments: {} });
     const healthText = toolText(health);
@@ -115,9 +121,9 @@ try {
       console.log("  get_account_info check skipped (set REGRESSION_ACCOUNT_ID to enable)");
     }
   } else {
-    check("tools/list count == 26", tools.length === 26, `got ${tools.length}`);
-    check("client mode: place_order has NO accountId",
-      !tools.find((t) => t.name === "place_order")?.inputSchema?.properties?.accountId);
+    check("tools/list count == 30", tools.length === 30, `got ${tools.length}`);
+    check("client mode: place_order_plan has NO accountId",
+      !tools.find((t) => t.name === "place_order_plan")?.inputSchema?.properties?.accountId);
 
     const health = await request(3, "tools/call", { name: "health_check", arguments: {} });
     check("health_check ok (no auth needed)", !health.result?.isError, toolText(health).slice(0, 120));
