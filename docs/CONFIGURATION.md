@@ -59,6 +59,25 @@ code from the `main` branch then caches it — subsequent starts are instant. Be
 spec, it may keep running the cached copy until you clear the npx cache, which forces a refetch of the newest `main`.
 Prefer a fixed, reproducible version? See [Pinning a version](#pinning-a-version) below.
 
+### Which install method?
+
+**npx from GitHub (recommended).** The configs below use `npx -y github:yourbourse/trade-server-mcp`:
+your MCP client fetches, builds, and runs the server straight from this repository — no manual
+clone, no separate build step, and you automatically pick up fixes as they land on `main`. This is
+the right choice for almost everyone. It needs Node.js 18+ and read access to the repository.
+
+**Clone and build (local checkout).** Choose this only if you specifically need to:
+
+- run **offline or air-gapped**, where fetching from GitHub at launch isn't possible;
+- **audit or modify** the code before it runs;
+- pin to an **exact local build** you control and rebuild on your own schedule; or
+- avoid any network fetch at startup.
+
+The trade-off is that you manage updates yourself (`git pull` + `npm run build`). For a controlled,
+reproducible deployment without a full clone, pinning a tag or commit is usually enough — see
+[Pinning a version](#pinning-a-version). The [Security](./SECURITY.md) guide explains why the
+project is distributed from GitHub rather than the npm registry.
+
 ### Setup 1: Admin mode (broker administrators)
 
 **Claude Desktop** — add to `claude_desktop_config.json`:

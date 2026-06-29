@@ -9,7 +9,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-7C3AED)](https://modelcontextprotocol.io/)
-![Tests](https://img.shields.io/badge/tests-137%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 
 <br>
@@ -56,6 +56,9 @@ Claude in about 10 minutes, with no coding.
 ```
 
 👉 **New to all this? Follow the [full click-by-click guide with screenshots](docs/CLAUDE_DESKTOP_SETUP.md).**
+
+**Using VS Code instead?** Follow the [VS Code / GitHub Copilot setup guide](docs/VSCODE_SETUP.md).
+**Using ChatGPT?** It connects only to hosted servers, not a local one like this — [see the note](docs/VSCODE_SETUP.md#using-chatgpt-instead).
 
 > Most people should use the setup above. You only need to clone and build the repository if you're a
 > developer who wants to read or modify the code.
@@ -142,6 +145,8 @@ Full guides: [Client Mode](docs/CLIENT_MODE.md) · [Admin Mode](docs/ADMIN_MODE.
 | Guide | Description |
 |-------|-------------|
 | [Getting Started](docs/GETTING_STARTED.md) | From a fresh machine to your first successful tool call, step by step |
+| [Claude Desktop Setup](docs/CLAUDE_DESKTOP_SETUP.md) | Click-by-click install for Claude Desktop, with screenshots — no experience needed |
+| [VS Code (Copilot) Setup](docs/VSCODE_SETUP.md) | Click-by-click install for VS Code + GitHub Copilot, plus a note on ChatGPT |
 | [Configuration](docs/CONFIGURATION.md) | Every environment variable, mode selection rules, and ready-to-paste client configs |
 
 ### Using the Server

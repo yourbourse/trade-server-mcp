@@ -103,6 +103,8 @@ For a deeper look at each persona, see [Admin Mode](./ADMIN_MODE.md) and
 
 ## Where next
 
+- [Claude Desktop Setup](./CLAUDE_DESKTOP_SETUP.md) / [VS Code (Copilot) Setup](./VSCODE_SETUP.md) —
+  click-by-click install for each host
 - [Configuration](./CONFIGURATION.md) — every environment variable, all config examples, every
   startup message
 - [Tools Reference](./TOOLS_REFERENCE.md) — all 30 client tools and 42 admin tools in detail
