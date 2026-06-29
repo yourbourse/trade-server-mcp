@@ -258,7 +258,7 @@ controlled deployment where you decide exactly when to upgrade), pin a specific 
 instead:
 
 ```json
-"args": ["-y", "github:yourbourse/trade-server-mcp#v1.1.1"]
+"args": ["-y", "github:yourbourse/trade-server-mcp#v2.0.0"]
 ```
 
 A tag is stable in practice, but tags can technically be re-pointed; for a guarantee that the code can

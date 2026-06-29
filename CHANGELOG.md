@@ -7,17 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-29
+
+### Changed
+
+- **BREAKING — trade execution is now two-step (confirm-before-execute).** The four one-shot money-mover tools (`place_order`, `close_position`, `close_by`, `close_all_positions`) are replaced by `*_plan` / `*_commit` pairs in both client and admin mode. `*_plan` validates and returns a preview (order summary + live quote + free margin) plus a single-use `commitToken` **without touching the market**; `*_commit` consumes the token and executes the unchanged order. This is what lets a non-technical user trade safely from Claude Desktop (preview → confirm → execute), and removes any un-gated execution path. Tool counts: client 26 → 30, admin 38 → 42.
+- Reworded the HTTP 400/404 sign-in hint: it no longer asserts a wrong port as the cause, and instead points to invalid-parameter / stray optional field / wrong endpoint / server-side possibilities.
+
+### Added
+
+- Two-phase trade execution: a single-use commit token (5-minute TTL), an order preview (plain-language summary + live quote + free margin), actionable parameter-completeness messages ("here's exactly what's missing" instead of guessing), MCP tool annotations (`readOnlyHint` on `*_plan`, `destructiveHint` on `*_commit`), and an AI disclosure on commit.
+
 ### Fixed
 
 - Client sign-in no longer fails when an optional config field is left blank: an unsubstituted `${...}` placeholder env value (injected by some MCP hosts for empty optional fields, such as `YB_BROKER`) is now treated as unset instead of sent as a literal value, which the server rejected with HTTP 400.
 - `get_symbols` glob filter now matches the server's symbol-name field (`n`), so patterns like `EUR*` return results instead of an empty list.
 - WebSocket: an explicit `disconnect()` is now terminal and no longer triggers a reconnect loop; pending requests are rejected promptly on close instead of hanging (Issue #9).
-- Admin trading: order-creating operations (`place_order`, `close_position`, `close_all_positions`, `close_by`) no longer retry on a transport error, matching client mode and preventing duplicate execution (Issue #9).
+- Admin trading: order-creating operations no longer retry on a transport error, matching client mode and preventing duplicate execution (Issue #9).
 - WebSocket `getSnapshot` now rejects on a subscribe failure instead of silently returning empty data, so callers can distinguish "no data" from "subscription failed" (Issue #9).
-
-### Changed
-
-- Reworded the HTTP 400/404 sign-in hint: it no longer asserts a wrong port as the cause, and instead points to invalid-parameter / stray optional field / wrong endpoint / server-side possibilities.
 
 ### Security
 
@@ -57,7 +64,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial internal release: admin mode with 38 tools — trading, account management, market data with locally computed technical indicators, server configuration — plus 4 MCP resources.
 
-[Unreleased]: https://github.com/yourbourse/trade-server-mcp/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/yourbourse/trade-server-mcp/compare/v1.1.1...v2.0.0
 [1.1.1]: https://github.com/yourbourse/trade-server-mcp/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/yourbourse/trade-server-mcp/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/yourbourse/trade-server-mcp/releases/tag/v1.0.0
