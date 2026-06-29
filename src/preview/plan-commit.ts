@@ -49,7 +49,5 @@ export function takeCommit(token: string, nowFn: () => number = Date.now): unkno
   const hint = pending.length
     ? ` Current pending token${pending.length > 1 ? "s" : ""}: ${pending.join(", ")}.`
     : "";
-  throw new Error(
-    `No pending order for that token — run the matching *_plan tool again.${hint}`,
-  );
+  throw new Error(`No pending order for that token — run the matching *_plan tool again.${hint}`);
 }

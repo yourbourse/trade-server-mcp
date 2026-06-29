@@ -5,8 +5,6 @@ import { toolHandler } from "./tool-handler.js";
 
 // Tool imports
 import {
-  placeOrderSchema,
-  placeOrder,
   cancelOrderSchema,
   cancelOrder,
   modifyOrderSchema,
@@ -15,8 +13,6 @@ import {
   getWorkingOrders,
   getOpenPositionsSchema,
   getOpenPositions,
-  closePositionSchema,
-  closePosition,
   modifyPositionSltpSchema,
   modifyPositionSltp,
   getTradeHistorySchema,
@@ -25,10 +21,6 @@ import {
   getOrderHistory,
   cancelAllOrdersSchema,
   cancelAllOrders,
-  closeAllPositionsSchema,
-  closeAllPositions,
-  closeBySchema,
-  closeBy,
   modifyOrderSltpSchema,
   modifyOrderSltp,
   forceDeleteOrderSchema,

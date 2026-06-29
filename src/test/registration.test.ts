@@ -23,7 +23,11 @@ test("client mode registers exactly CLIENT_TOOL_COUNT tools, none leaking accoun
     return (originalTool as any)(name, ...rest);
   };
   const originalRegister = server.registerTool.bind(server);
-  (server as any).registerTool = (name: string, config: { inputSchema?: unknown }, ...rest: unknown[]) => {
+  (server as any).registerTool = (
+    name: string,
+    config: { inputSchema?: unknown },
+    ...rest: unknown[]
+  ) => {
     registered.push(name);
     checkLeak(name, config?.inputSchema as Record<string, unknown> | undefined);
     return (originalRegister as any)(name, config, ...rest);

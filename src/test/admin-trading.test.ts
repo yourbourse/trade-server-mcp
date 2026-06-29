@@ -141,8 +141,11 @@ test("admin close_* plans enforce accountId (and their own required ids)", async
   const cp = (await at.closePositionPlan(fake, { positionId: 5 })) as { needMoreInfo?: string };
   assert.match(cp.needMoreInfo!, /account/i);
   assert.ok(
-    ((await at.closePositionPlan(fake, { accountId: 100, positionId: 5 })) as { commitToken?: string })
-      .commitToken,
+    (
+      (await at.closePositionPlan(fake, { accountId: 100, positionId: 5 })) as {
+        commitToken?: string;
+      }
+    ).commitToken,
   );
   const cb = (await at.closeByPlan(fake, { accountId: 100, positionId: 5 })) as {
     needMoreInfo?: string;

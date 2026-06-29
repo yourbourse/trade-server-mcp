@@ -5,10 +5,7 @@
 
 export type FieldSpec = { name: string; label: string; options?: string[] };
 
-export function missingFields(
-  params: Record<string, unknown>,
-  specs: FieldSpec[],
-): FieldSpec[] {
+export function missingFields(params: Record<string, unknown>, specs: FieldSpec[]): FieldSpec[] {
   return specs.filter((s) => params[s.name] === undefined || params[s.name] === null);
 }
 

@@ -455,7 +455,10 @@ test("close_by_commit executes once, then rejects reuse", async () => {
     commitToken: string;
   };
   await t.closeByCommit(fake, { commitToken: plan.commitToken });
-  await assert.rejects(t.closeByCommit(fake, { commitToken: plan.commitToken }), /No pending order/);
+  await assert.rejects(
+    t.closeByCommit(fake, { commitToken: plan.commitToken }),
+    /No pending order/,
+  );
 });
 
 test("close_all_positions_plan tokenizes with a high-impact disclosure (no required fields)", async () => {
