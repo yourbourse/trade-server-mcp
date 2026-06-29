@@ -58,7 +58,7 @@ price and a take profit about 50 pips above."*
 
 3. *You review the preview and confirm.* Your AI shows you the order it's about to place; you
    say something like *"yes, go ahead."*
-4. `place_order_commit` — `{ "commitToken": "plan_42_3kf9z2" }` — the token from step 2. This is
+4. `place_order_commit` — `{ "commitToken": "plan_3f8e1c2a-9b4d-4e6f-8a1b-2c3d4e5f6a7b" }` — the token from step 2. This is
    the step that actually places the order.
 
 **What you get back:** the quote first, then the preview to confirm against, and only after your
@@ -78,7 +78,7 @@ it again (see [Client Mode](./CLIENT_MODE.md#safety-behaviors-you-should-know-ab
 2. `close_position_plan` — `{ "positionId": 67890, "quantity": 0.05 }` — half of the 0.1-lot
    position found in step 1. Returns a preview and a `commitToken`; **nothing is closed yet**.
 3. *You confirm the partial close.*
-4. `close_position_commit` — `{ "commitToken": "plan_43_8x1q0a" }` — executes the close.
+4. `close_position_commit` — `{ "commitToken": "plan_7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f" }` — executes the close.
 
 **What you get back:** the list of matching positions with IDs, sizes, open prices and current
 P/L, then a preview of the partial close to confirm, and only after you confirm the close result.
@@ -93,7 +93,7 @@ The remaining half stays open with its original SL/TP.
 1. `close_all_positions_plan` — `{}` — previews the flatten (it's high-impact) and returns a
    `commitToken`; **nothing is closed yet**.
 2. *You confirm the flatten.*
-3. `close_all_positions_commit` — `{ "commitToken": "plan_45_q9w3e1" }` — closes every position.
+3. `close_all_positions_commit` — `{ "commitToken": "plan_b4c5d6e7-8f9a-4b1c-9d3e-4f5a6b7c8d9e" }` — closes every position.
 4. `cancel_all_orders` — `{}` — cancelling working orders is not a money-mover, so it runs in one
    step (no preview).
 
