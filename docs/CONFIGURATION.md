@@ -274,12 +274,23 @@ an **Access Tokens** page (a permissioned feature — you may need manager acces
 yourself:
 
 1. Open the **user menu** (your avatar, top-right) and choose **Access Tokens**.
-2. Click **Add**.
+
+   ![The user menu open, with the Access Tokens item highlighted](images/access-token-1-menu.png)
+
+2. On the Access Tokens page, click **Add**.
+
+   ![The Access Tokens page with the Add button at the top left](images/access-token-2-list.png)
+
 3. Choose the **Login** (the trading account the token is for) and set an **Expiration** (read the
    caveat below first), then click **Submit**.
-4. The drawer shows a **Token** and a **Signing token**, each with a copy button. **Copy both
+
+   ![The Add Access Token drawer with Login and Expiration fields](images/access-token-3-add-form.png)
+
+4. The drawer now shows a **Token** and a **Signing token**, each with a copy button. **Copy both
    now** — the warning is accurate: you will not be able to see them again after closing the
    drawer. If you lose them, delete the token and issue a new one.
+
+   ![The created Token and Signing token, each with a copy button, shown once](images/access-token-4-reveal.png)
 
 Put them in your configuration exactly as in **Setup 3** above:
 
