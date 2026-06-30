@@ -55,7 +55,7 @@ For traders (client mode) — no Node, git, or config file needed.
 
    ![Choose the .mcpb file](docs/images/mcpb-setup/03-choose-file.png)
 
-4. Review (**Version 2.0.1**, "All requirements met") → **Install**
+4. Review (**Version 2.0.1** or later, "All requirements met") → **Install**
 
    ![Extension preview](docs/images/mcpb-setup/04-preview-install.png)
 
