@@ -261,6 +261,39 @@ claude mcp add trade-server \
 > On Windows, write the path with doubled backslashes, e.g.
 > `"C:\\Users\\you\\trade-server-mcp\\dist\\index.js"`.
 
+### Getting an API token pair
+
+This applies to **Setup 3 (client mode, token pair)** only. Most traders don't need it — for a
+standing connection, **login/password (Setup 2) is simpler and more robust**: it signs in with the
+account you already have and refreshes its session automatically, with no token to manage. Use a
+token pair only if your broker issues API tokens, or you'd rather not put your account password in
+the configuration.
+
+**Where the pair comes from.** Your broker can issue it for you. If your YourBourse portal exposes
+an **Access Tokens** page (a permissioned feature — you may need manager access), you can create one
+yourself:
+
+1. Open the **user menu** (your avatar, top-right) and choose **Access Tokens**.
+2. Click **Add**.
+3. Choose the **Login** (the trading account the token is for) and set an **Expiration** (read the
+   caveat below first), then click **Submit**.
+4. The drawer shows a **Token** and a **Signing token**, each with a copy button. **Copy both
+   now** — the warning is accurate: you will not be able to see them again after closing the
+   drawer. If you lose them, delete the token and issue a new one.
+
+Put them in your configuration exactly as in **Setup 3** above:
+
+- **Token** → `YB_API_KEY`
+- **Signing token** → `YB_SECRET_KEY`
+- plus `YB_MODE=client`
+
+> **⚠️ Choose the expiration deliberately.** Access tokens **expire** — the default is **1 hour**.
+> In token-pair mode the MCP uses the pair exactly as issued and **does not refresh it**, so when the
+> token expires every call fails (HTTP 401) until you issue a new pair and update your configuration.
+> The 1-hour default is fine for a quick test; for a standing connection set a long expiration, or
+> use **login/password (Setup 2)**, which refreshes automatically and never expires out from under
+> you.
+
 ### Running more than one server
 
 You can connect to more than one Trade Server at the same time — for example two separate

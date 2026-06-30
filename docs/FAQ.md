@@ -113,6 +113,13 @@ password (the same ones used in the broker's trading terminal), which work direc
 access — if you have one, configure it as `YB_API_KEY` + `YB_SECRET_KEY` with
 `YB_MODE=client`. Admin key pairs are issued only to broker administrators.
 
+If your portal exposes an **Access Tokens** page you can create the token pair yourself; the
+step-by-step (and an important note about **token expiration** — token-pair mode does not
+auto-refresh, so a short-lived token stops the connection) is in
+[Configuration → Getting an API token pair](./CONFIGURATION.md#getting-an-api-token-pair). For a
+standing connection that you don't want to babysit, login/password is the easier choice — it
+refreshes automatically.
+
 ## Did admin mode change in this release?
 
 No. Version 1.1.0 added client mode — the trader-scoped tool set with login/password and

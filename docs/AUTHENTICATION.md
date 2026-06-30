@@ -156,6 +156,14 @@ mechanically: the pair is static, used as-is, with no sign-in step and no refres
 The difference is scope — the pair is bound to your trading account, so the server only
 ever lets it see and act on that account.
 
+One caveat that does **not** apply to admin keys: a portal-issued access token has an
+**expiration**. Because the pair is static and never refreshed, the MCP stops working the
+moment the token expires — every call returns `401` with no automatic recovery — until you
+issue a new pair and update your configuration. So issue the token with a long enough
+expiration, or use login/password mode, which refreshes automatically. Obtaining a token
+pair and choosing its expiration is covered in
+[Configuration → Getting an API token pair](./CONFIGURATION.md#getting-an-api-token-pair).
+
 ## Timeouts and retries
 
 The exact rules, all of them deliberate:
