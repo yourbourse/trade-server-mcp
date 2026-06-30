@@ -22,10 +22,10 @@ orders — no scripts, no copy-pasting API responses. Brokers get a server-wide 
 
 ## ▶ Get started
 
-You'll be talking to your trading account through Claude in about **10 minutes, with no coding**.
+You'll be talking to your trading account through your AI assistant in about **10 minutes, with no coding**.
 **Pick how you want to install** — each option below expands to a complete, screenshot-by-screenshot walkthrough.
 
-> **Everything below is free and installs in a few clicks.** Each method lists exactly what it needs — the one-click `.mcpb` is the lightest (just [Claude Desktop](https://claude.ai/download)); the manual path adds [Node.js](https://nodejs.org) + [git](https://git-scm.com); Codex uses its own app.
+> **Everything below is free and installs in a few clicks.** Each method lists exactly what it needs — the one-click `.mcpb` is the lightest (just [Claude Desktop](https://claude.ai/download)); the manual path adds [Node.js](https://nodejs.org) + [git](https://git-scm.com); Codex uses its own app plus [Node.js](https://nodejs.org) (for `npx`).
 
 <details>
 <summary><b>📦 Claude Desktop — one-click <code>.mcpb</code> extension (easiest) · screenshot walkthrough</b></summary>
@@ -147,7 +147,7 @@ Codex runs the MCP locally via `npx`. In Codex, open **Settings → MCP servers*
 
    ![MCP servers form](docs/images/codex-setup/02-mcp-servers-form.png)
 
-3. Fill it in — name `trade-server`, command `npx` with args `-y github:yourbourse/trade-server-mcp`, and the four `YB_` environment variables (`YB_BASE_URL`, `YB_MODE=client`, `YB_LOGIN`, `YB_PASSWORD`). **Save and fully restart Codex.**
+3. Fill it in — name `trade-server`, command `npx` with args `-y github:yourbourse/trade-server-mcp`, and the four `YB_` environment variables (`YB_BASE_URL`, `YB_MODE=client`, `YB_LOGIN`, `YB_PASSWORD`) — plus the optional `YB_BROKER` if your broker requires it. **Save and fully restart Codex.**
 
    ![Filled-in Codex MCP form](docs/images/codex-setup/03-filled-form.png)
 
