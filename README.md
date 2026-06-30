@@ -5,9 +5,9 @@
 **Trade on a YourBourse account from Claude and other AI assistants — just by asking.**
 
 [![CI](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/yourbourse/trade-server-mcp/blob/main/CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.0.1-blue)](https://github.com/yourbourse/trade-server-mcp/blob/main/CHANGELOG.md)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-7C3AED)](https://modelcontextprotocol.io/)
-![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-153%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 
 <br>
@@ -20,22 +20,15 @@ orders — no scripts, no copy-pasting API responses. Brokers get a server-wide 
 
 ---
 
-## ▶ Get started in 3 steps
+## ▶ Get started
 
 You'll be talking to your trading account through Claude in about **10 minutes, with no coding**.
-The walkthrough below uses **Claude Desktop** (the easiest). Using a different app? See
-[Using a different app](#using-a-different-app) just below.
+**Pick how you want to install** — each option below expands to a complete, screenshot-by-screenshot walkthrough.
 
-### 1. Install
-
-- Install [Node.js](https://nodejs.org) and [git](https://git-scm.com) — one-time, click-through installers.
-- Install [Claude Desktop](https://claude.ai/download).
-
-> **Even simpler:** the one-click **[Claude Desktop extension (`.mcpb`)](docs/CLAUDE_DESKTOP_SETUP.md#one-click-install-claude-desktop-extension)**
-> installs everything through a form — no config file to edit. Download it from the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest).
+> **Prerequisite:** [Claude Desktop](https://claude.ai/download) (free). The one-click `.mcpb` extension needs nothing else; the manual path also needs [Node.js](https://nodejs.org) and [git](https://git-scm.com) — one-time, click-through installers.
 
 <details>
-<summary><b>📦 One-click <code>.mcpb</code> install — full screenshot walkthrough</b></summary>
+<summary><b>📦 Claude Desktop — one-click <code>.mcpb</code> extension (easiest) · screenshot walkthrough</b></summary>
 
 <br>
 
@@ -75,53 +68,100 @@ Then ask Claude _"run a health check"_ to confirm. Full guide: **[Claude Desktop
 
 </details>
 
-### 2. Set up
+<details>
+<summary><b>🖥️ Claude Desktop — manual setup (npx + config file) · screenshot walkthrough</b></summary>
 
-In Claude Desktop, open **Settings → Developer → Edit Config**:
+<br>
 
-![Claude Desktop Settings → Developer → Edit Config](docs/images/claude-desktop-setup/07-settings-developer-editconfig.png)
+Needs **Node.js**, **git**, and **Claude Desktop** installed.
 
-Paste this in, and fill in the **three details from your broker** (your normal trading account login):
+1. Install **Node.js** (LTS) from [nodejs.org](https://nodejs.org), run the installer, then confirm the version in a terminal.
 
-```json
-{
-  "mcpServers": {
-    "trade-server": {
-      "command": "npx",
-      "args": ["-y", "github:yourbourse/trade-server-mcp"],
-      "env": {
-        "YB_BASE_URL": "<your-server-url>",
-        "YB_MODE": "client",
-        "YB_LOGIN": "<your-login>",
-        "YB_PASSWORD": "<your-password>"
-      }
-    }
-  }
-}
-```
+   ![Download Node.js](docs/images/claude-desktop-setup/01-node-download.png)
+   ![Finish the Node.js installer](docs/images/claude-desktop-setup/02-node-installer-finish.png)
+   ![Verify the Node.js version](docs/images/claude-desktop-setup/03-verify-node-version.png)
 
-![The config file with the trade-server block pasted in](docs/images/claude-desktop-setup/09-config-file-pasted.png)
+2. Install **git** from [git-scm.com](https://git-scm.com), then confirm it.
 
-### 3. Use it
+   ![Download git](docs/images/claude-desktop-setup/04-git-download.png)
+   ![Verify the git version](docs/images/claude-desktop-setup/05-verify-git-version.png)
 
-**Fully quit and reopen Claude Desktop**, then ask it:
+3. Install **Claude Desktop** from [claude.ai/download](https://claude.ai/download).
 
-> *"Run a health check on the trade server."*
+   ![Download Claude Desktop](docs/images/claude-desktop-setup/06-claude-desktop-download.png)
 
-If it reports the server's time and version, you're connected — start asking for quotes, your
-balance, or to place a trade.
+4. In Claude Desktop, open **Settings → Developer → Edit Config**.
 
-![Claude returning a successful health check from the trade server](docs/images/claude-desktop-setup/12-health-check-result.png)
+   ![Settings → Developer → Edit Config](docs/images/claude-desktop-setup/07-settings-developer-editconfig.png)
 
-👉 **Want every click with screenshots?** Follow the full
-**[Claude Desktop Setup guide](docs/CLAUDE_DESKTOP_SETUP.md)**.
+5. Paste this in, filling the **three details from your broker** (your normal trading account login):
 
-#### Using a different app?
+   ```json
+   {
+     "mcpServers": {
+       "trade-server": {
+         "command": "npx",
+         "args": ["-y", "github:yourbourse/trade-server-mcp"],
+         "env": {
+           "YB_BASE_URL": "<your-server-url>",
+           "YB_MODE": "client",
+           "YB_LOGIN": "<your-login>",
+           "YB_PASSWORD": "<your-password>"
+         }
+       }
+     }
+   }
+   ```
+
+   ![The empty config file](docs/images/claude-desktop-setup/08-config-file-empty.png)
+   ![The config file with the trade-server block pasted in](docs/images/claude-desktop-setup/09-config-file-pasted.png)
+
+6. **Fully quit and reopen** Claude Desktop.
+
+   ![Quit Claude completely](docs/images/claude-desktop-setup/10-quit-claude-completely.png)
+
+7. Confirm the trade-server tools appear.
+
+   ![Tools listed under the tools icon](docs/images/claude-desktop-setup/11-tools-icon-listing.png)
+
+8. Ask Claude _"run a health check"_ — a healthy status means you're connected.
+
+   ![A successful health check](docs/images/claude-desktop-setup/12-health-check-result.png)
+
+Full guide: **[Claude Desktop Setup](docs/CLAUDE_DESKTOP_SETUP.md)**.
+
+</details>
+
+<details>
+<summary><b>🤖 OpenAI Codex · screenshot walkthrough</b></summary>
+
+<br>
+
+Codex runs the MCP locally via `npx`. In Codex, open **Settings → MCP servers** and add a custom (STDIO) server.
+
+1. Open Codex **Settings**.
+
+   ![Open Codex settings](docs/images/codex-setup/01-open-settings.png)
+
+2. Go to **MCP servers** and add a new server.
+
+   ![MCP servers form](docs/images/codex-setup/02-mcp-servers-form.png)
+
+3. Fill it in — name `trade-server`, command `npx` with args `-y github:yourbourse/trade-server-mcp`, and the four `YB_` environment variables (`YB_BASE_URL`, `YB_MODE=client`, `YB_LOGIN`, `YB_PASSWORD`). **Save and fully restart Codex.**
+
+   ![Filled-in Codex MCP form](docs/images/codex-setup/03-filled-form.png)
+
+Full guide: **[Codex setup](docs/CODEX_SETUP.md)**.
+
+</details>
+
+**Once connected** (any method), ask Claude _"Run a health check on the trade server."_ If it reports the server's time and version, you're set — ask for quotes, your balance, or to place a trade.
+
+#### Other apps
 
 | App | Guide |
 |---|---|
 | **VS Code (GitHub Copilot)** | [VS Code setup](docs/VSCODE_SETUP.md) |
-| **OpenAI Codex** | [Codex setup](docs/CODEX_SETUP.md) |
 | **Claude Code (CLI)** | one command — see [Configuration](docs/CONFIGURATION.md#configuration-examples) |
 
 > **Broker administrator?** Use `YB_MODE=admin` with your `YB_API_KEY` + `YB_SECRET_KEY` — see
