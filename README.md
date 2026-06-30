@@ -34,6 +34,47 @@ The walkthrough below uses **Claude Desktop** (the easiest). Using a different a
 > **Even simpler:** the one-click **[Claude Desktop extension (`.mcpb`)](docs/CLAUDE_DESKTOP_SETUP.md#one-click-install-claude-desktop-extension)**
 > installs everything through a form — no config file to edit. Download it from the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest).
 
+<details>
+<summary><b>📦 One-click <code>.mcpb</code> install — full screenshot walkthrough</b></summary>
+
+<br>
+
+For traders (client mode) — no Node, git, or config file needed.
+
+**Download** `trade-server-mcp.mcpb` from the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) (under **Assets**), then in Claude Desktop:
+
+1. **Settings → Extensions** (under **Desktop app**) → **Advanced settings**
+
+   ![Extensions settings](docs/images/mcpb-setup/01-extensions.png)
+
+2. **Extension Developer → Install Extension**
+
+   ![Install Extension](docs/images/mcpb-setup/02-install-extension.png)
+
+3. Select the downloaded **`trade-server-mcp.mcpb`**
+
+   ![Choose the .mcpb file](docs/images/mcpb-setup/03-choose-file.png)
+
+4. Review (**Version 2.0.1**, "All requirements met") → **Install**
+
+   ![Extension preview](docs/images/mcpb-setup/04-preview-install.png)
+
+5. Confirm the **"Install Extension?"** prompt → **Install**
+
+   ![Confirm install](docs/images/mcpb-setup/05-confirm-install.png)
+
+6. Fill the **Configure** form (server address, login, password, optional broker) → **Save**
+
+   ![Configure fields](docs/images/mcpb-setup/06-configure.png)
+
+7. Flip the toggle to **enable** it (it starts **Disabled**)
+
+   ![Enable the extension](docs/images/mcpb-setup/07-enable.png)
+
+Then ask Claude _"run a health check"_ to confirm. Full guide: **[Claude Desktop Setup](docs/CLAUDE_DESKTOP_SETUP.md#one-click-install-claude-desktop-extension)**.
+
+</details>
+
 ### 2. Set up
 
 In Claude Desktop, open **Settings → Developer → Edit Config**:

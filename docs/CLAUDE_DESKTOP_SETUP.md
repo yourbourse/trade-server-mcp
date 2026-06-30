@@ -11,13 +11,42 @@ No coding, and **no prior experience with "MCP" required.**
 
 The easiest way — **no Node, no git, no config file to edit.** This is for **traders (client mode)**; admins should use the manual setup below.
 
-1. **Download the extension.** Go to the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) and download **`trade-server-mcp.mcpb`** from the **Assets** list. (Direct link: `https://github.com/yourbourse/trade-server-mcp/releases/latest/download/trade-server-mcp.mcpb`.)
-2. **Install it.** Double-click the downloaded `trade-server-mcp.mcpb` file — Claude Desktop opens an install dialog — and click **Install**. _(Alternatively, in Claude Desktop go to **Settings → Extensions** and drag the `.mcpb` file onto the window.)_
-3. **Fill in the form** Claude Desktop shows you:
+**First, download the extension.** Go to the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) and download **`trade-server-mcp.mcpb`** from the **Assets** list. (Direct link: `https://github.com/yourbourse/trade-server-mcp/releases/latest/download/trade-server-mcp.mcpb`.) It lands in your **Downloads** folder.
+
+Then install it in Claude Desktop:
+
+1. Open **Settings → Extensions** (under **Desktop app**) and click **Advanced settings**.
+
+   ![Claude Desktop Extensions settings](images/mcpb-setup/01-extensions.png)
+
+2. Under **Extension Developer**, click **Install Extension**.
+
+   ![Install Extension button](images/mcpb-setup/02-install-extension.png)
+
+3. In the file picker, select the **`trade-server-mcp.mcpb`** you downloaded.
+
+   ![Choose the .mcpb file](images/mcpb-setup/03-choose-file.png)
+
+4. Review the extension — it should show **Version 2.0.1** and **"All requirements met"** — then click **Install**.
+
+   ![Extension preview with Install button](images/mcpb-setup/04-preview-install.png)
+
+5. Confirm the **"Install Extension?"** prompt with **Install**.
+
+   ![Confirm install dialog](images/mcpb-setup/05-confirm-install.png)
+
+6. Fill in the **Configure** form, then **Save**:
    - **Server address** — your Trade Server URL from your broker (e.g. `https://your-server.example.com`).
    - **Account login** and **Password** — from your broker. (Your password is stored in your operating system's keychain, not in a plain file.)
-   - **Broker** — optional; leave it blank unless your broker tells you to set it.
-4. **Check it works.** Start a chat and ask _"run a health check."_ A healthy status means you're connected.
+   - **Broker name** — optional; leave it blank unless your broker tells you to set it.
+
+   ![Configure the credential fields](images/mcpb-setup/06-configure.png)
+
+7. Turn the extension **on** with the enable toggle (it starts **Disabled**).
+
+   ![Enable the extension](images/mcpb-setup/07-enable.png)
+
+8. **Check it works.** Start a chat and ask _"run a health check."_ A healthy status means you're connected.
 
 That's it — you can skip the rest of this guide. Everything below is the **manual alternative** (install Node + edit a config file), which also covers **admin mode**.
 
