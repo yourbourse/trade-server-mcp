@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - WebSocket URL derivation now converts the base-URL scheme with an anchored, case-insensitive match, so an uppercase scheme (e.g. `HTTPS://`) — which passes config validation — no longer yields an invalid WebSocket URL.
+- `getSnapshot` no longer uses an async Promise executor (a subscribe rejection can no longer leak as an unhandled rejection); the subscribe promise is driven with `.then`/`.catch`.
+- The `place_order_plan` completeness hint now lists all valid time-in-force values (`IOC`, `FOK`, `GTC`, `GTD`, `Day`, `Ms`) instead of a subset, so it no longer implies the others are unsupported.
 
 ## [2.0.2] - 2026-06-30
 

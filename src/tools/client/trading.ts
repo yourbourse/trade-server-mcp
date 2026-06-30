@@ -71,7 +71,11 @@ export async function placeOrderPlan(
     { name: "side", label: "side", options: ["buy", "sell"] },
     { name: "quantity", label: "quantity (lots)" },
     { name: "orderType", label: "order type", options: ["Market", "Limit", "Stop", "StopLimit"] },
-    { name: "timeInForce", label: "time-in-force", options: ["IOC", "FOK", "GTC"] },
+    {
+      name: "timeInForce",
+      label: "time-in-force",
+      options: ["IOC", "FOK", "GTC", "GTD", "Day", "Ms"],
+    },
   ]);
   if (need) return { needMoreInfo: need };
   const priceNeed = orderPriceCompleteness("place_order_plan", params);

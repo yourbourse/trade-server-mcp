@@ -203,7 +203,7 @@ export class WsClient {
 
     await this.ensureConnected();
 
-    return new Promise<unknown[]>(async (resolve, reject) => {
+    return new Promise<unknown[]>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.subscriptionHandlers.delete(reqId);
         this.unsubscribe(channel, payload, reqId);
@@ -214,22 +214,23 @@ export class WsClient {
         results.push(data);
       });
 
-      try {
-        await this.subscribe(channel, payload, reqId);
-      } catch (err) {
-        clearTimeout(timer);
-        this.subscriptionHandlers.delete(reqId);
-        reject(err instanceof Error ? err : new Error(String(err)));
-        return;
-      }
-
-      // Give time for streaming data after snapshot
-      setTimeout(() => {
-        clearTimeout(timer);
-        this.subscriptionHandlers.delete(reqId);
-        this.unsubscribe(channel, payload, reqId);
-        resolve(results);
-      }, timeout);
+      // Non-async executor: drive the subscribe promise with .then/.catch so a rejection can never
+      // leak as an unhandled rejection (an async Promise executor would not reject the outer promise).
+      this.subscribe(channel, payload, reqId)
+        .then(() => {
+          // Give time for streaming data after the snapshot, then resolve.
+          setTimeout(() => {
+            clearTimeout(timer);
+            this.subscriptionHandlers.delete(reqId);
+            this.unsubscribe(channel, payload, reqId);
+            resolve(results);
+          }, timeout);
+        })
+        .catch((err) => {
+          clearTimeout(timer);
+          this.subscriptionHandlers.delete(reqId);
+          reject(err instanceof Error ? err : new Error(String(err)));
+        });
     });
   }
 
