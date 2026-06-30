@@ -25,7 +25,7 @@ orders — no scripts, no copy-pasting API responses. Brokers get a server-wide 
 You'll be talking to your trading account through Claude in about **10 minutes, with no coding**.
 **Pick how you want to install** — each option below expands to a complete, screenshot-by-screenshot walkthrough.
 
-> **Prerequisite:** [Claude Desktop](https://claude.ai/download) (free). The one-click `.mcpb` extension needs nothing else; the manual path also needs [Node.js](https://nodejs.org) and [git](https://git-scm.com) — one-time, click-through installers.
+> **Everything below is free and installs in a few clicks.** Each method lists exactly what it needs — the one-click `.mcpb` is the lightest (just [Claude Desktop](https://claude.ai/download)); the manual path adds [Node.js](https://nodejs.org) + [git](https://git-scm.com); Codex uses its own app.
 
 <details>
 <summary><b>📦 Claude Desktop — one-click <code>.mcpb</code> extension (easiest) · screenshot walkthrough</b></summary>
@@ -155,7 +155,7 @@ Full guide: **[Codex setup](docs/CODEX_SETUP.md)**.
 
 </details>
 
-**Once connected** (any method), ask Claude _"Run a health check on the trade server."_ If it reports the server's time and version, you're set — ask for quotes, your balance, or to place a trade.
+**Once connected** (any method), ask your assistant _"Run a health check on the trade server."_ If it reports the server's time and version, you're set — ask for quotes, your balance, or to place a trade.
 
 #### Other apps
 

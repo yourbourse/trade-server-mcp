@@ -11,7 +11,7 @@ No coding, and **no prior experience with "MCP" required.**
 
 The easiest way — **no Node, no git, no config file to edit.** This is for **traders (client mode)**; admins should use the manual setup below.
 
-**First, download the extension.** Go to the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) and download **`trade-server-mcp.mcpb`** from the **Assets** list. (Direct link: `https://github.com/yourbourse/trade-server-mcp/releases/latest/download/trade-server-mcp.mcpb`.) It saves wherever your browser puts downloads — usually your **Downloads** folder.
+**First, download the extension.** Go to the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) and download **`trade-server-mcp.mcpb`** from the **Assets** list. ([direct download](https://github.com/yourbourse/trade-server-mcp/releases/latest/download/trade-server-mcp.mcpb)) It saves wherever your browser puts downloads — usually your **Downloads** folder.
 
 Then install it in Claude Desktop:
 
