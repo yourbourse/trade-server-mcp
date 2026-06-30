@@ -204,31 +204,40 @@ export class WsClient {
     await this.ensureConnected();
 
     return new Promise<unknown[]>((resolve, reject) => {
-      const timer = setTimeout(() => {
+      const cleanup = () => {
         this.subscriptionHandlers.delete(reqId);
-        this.unsubscribe(channel, payload, reqId);
-        resolve(results);
-      }, timeout);
+        try {
+          this.unsubscribe(channel, payload, reqId);
+        } catch {
+          // best-effort: the socket may already be closed
+        }
+      };
 
       this.subscriptionHandlers.set(reqId, (data) => {
         results.push(data);
       });
 
+      // Fallback: if subscribe never resolves, resolve with whatever arrived after `timeout`.
+      let timer = setTimeout(() => {
+        cleanup();
+        resolve(results);
+      }, timeout);
+
       // Non-async executor: drive the subscribe promise with .then/.catch so a rejection can never
       // leak as an unhandled rejection (an async Promise executor would not reject the outer promise).
       this.subscribe(channel, payload, reqId)
         .then(() => {
-          // Give time for streaming data after the snapshot, then resolve.
-          setTimeout(() => {
-            clearTimeout(timer);
-            this.subscriptionHandlers.delete(reqId);
-            this.unsubscribe(channel, payload, reqId);
+          // Subscribe succeeded — cancel the fallback and start a fresh streaming window so the
+          // caller always gets the full window after a successful subscribe.
+          clearTimeout(timer);
+          timer = setTimeout(() => {
+            cleanup();
             resolve(results);
           }, timeout);
         })
         .catch((err) => {
           clearTimeout(timer);
-          this.subscriptionHandlers.delete(reqId);
+          cleanup(); // best-effort unsubscribe in case the server partially accepted the request
           reject(err instanceof Error ? err : new Error(String(err)));
         });
     });
