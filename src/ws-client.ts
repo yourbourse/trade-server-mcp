@@ -204,6 +204,7 @@ export class WsClient {
     await this.ensureConnected();
 
     return new Promise<unknown[]>((resolve, reject) => {
+      let settled = false;
       const cleanup = () => {
         this.subscriptionHandlers.delete(reqId);
         // unsubscribe is async, so a synchronous throw inside it surfaces as a rejected promise that
@@ -212,34 +213,41 @@ export class WsClient {
           /* best-effort: the socket may already be closed */
         });
       };
+      // settled guard: once we resolve/reject, later handlers (a late subscribe ack after the
+      // fallback already fired, or vice-versa) must no-op — no double cleanup, no extra timer.
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        cleanup();
+        resolve(results);
+      };
+      const fail = (err: unknown) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        cleanup();
+        reject(err instanceof Error ? err : new Error(String(err)));
+      };
 
       this.subscriptionHandlers.set(reqId, (data) => {
         results.push(data);
       });
 
       // Fallback: if subscribe never resolves, resolve with whatever arrived after `timeout`.
-      let timer = setTimeout(() => {
-        cleanup();
-        resolve(results);
-      }, timeout);
+      let timer = setTimeout(finish, timeout);
 
       // Non-async executor: drive the subscribe promise with .then/.catch so a rejection can never
       // leak as an unhandled rejection (an async Promise executor would not reject the outer promise).
       this.subscribe(channel, payload, reqId)
         .then(() => {
-          // Subscribe succeeded — cancel the fallback and start a fresh streaming window so the
-          // caller always gets the full window after a successful subscribe.
+          if (settled) return; // fallback already fired — don't reschedule or double-clean
+          // Subscribe succeeded — restart the timer as a streaming window so the caller always
+          // gets the full window after a successful subscribe.
           clearTimeout(timer);
-          timer = setTimeout(() => {
-            cleanup();
-            resolve(results);
-          }, timeout);
+          timer = setTimeout(finish, timeout);
         })
-        .catch((err) => {
-          clearTimeout(timer);
-          cleanup(); // best-effort unsubscribe in case the server partially accepted the request
-          reject(err instanceof Error ? err : new Error(String(err)));
-        });
+        .catch(fail);
     });
   }
 
