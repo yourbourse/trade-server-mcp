@@ -53,6 +53,21 @@ async function openClient() {
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
+test("derives a case-insensitive wss:// URL even from an uppercase base-URL scheme", () => {
+  let capturedUrl = "";
+  const factory = (url: string) => {
+    capturedUrl = url;
+    return new FakeSocket() as unknown as import("ws").WebSocket;
+  };
+  const client = new WsClient(
+    { apiKey: "K", secretKey: "S", baseUrl: "HTTPS://ts.local" },
+    factory,
+  );
+  activeClients.push(client);
+  client.connect().catch(() => {}); // never opens in this test; the URL is derived synchronously
+  assert.match(capturedUrl, /^wss:\/\/ts\.local\/ws\/v1$/);
+});
+
 test("explicit disconnect does not reconnect", async () => {
   const { client, sockets } = await openClient();
   assert.equal(client.isConnected, true);

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- WebSocket URL derivation now converts the base-URL scheme with an anchored, case-insensitive match, so an uppercase scheme (e.g. `HTTPS://`) — which passes config validation — no longer yields an invalid WebSocket URL.
+
 ## [2.0.2] - 2026-06-30
 
 ### Fixed

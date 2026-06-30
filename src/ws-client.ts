@@ -33,7 +33,11 @@ export class WsClient {
     if (this.connected) return;
     this.isShuttingDown = false;
 
-    const wsUrl = this.config.baseUrl.replace("https://", "wss://").replace("http://", "ws://");
+    // Anchored + case-insensitive: an uppercase scheme (e.g. "HTTPS://") passes config validation
+    // (URL.protocol is normalized there) but keeps its original case in the raw baseUrl string.
+    const wsUrl = this.config.baseUrl
+      .replace(/^https:\/\//i, "wss://")
+      .replace(/^http:\/\//i, "ws://");
     const url = `${wsUrl}/ws/v1`;
 
     return new Promise((resolve, reject) => {
