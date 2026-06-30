@@ -147,7 +147,7 @@ Full guides: [Client Mode](docs/CLIENT_MODE.md) · [Admin Mode](docs/ADMIN_MODE.
 | [Getting Started](docs/GETTING_STARTED.md) | From a fresh machine to your first successful tool call, step by step |
 | [Claude Desktop Setup](docs/CLAUDE_DESKTOP_SETUP.md) | Click-by-click install for Claude Desktop, with screenshots — no experience needed |
 | [VS Code (Copilot) Setup](docs/VSCODE_SETUP.md) | Click-by-click install for VS Code + GitHub Copilot, plus a note on ChatGPT |
-| [Configuration](docs/CONFIGURATION.md) | Every environment variable, mode selection rules, and ready-to-paste client configs |
+| [Configuration](docs/CONFIGURATION.md) | Every environment variable, mode selection rules, ready-to-paste client configs, and [running more than one server](docs/CONFIGURATION.md#running-more-than-one-server) |
 
 ### Using the Server
 

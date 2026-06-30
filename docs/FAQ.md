@@ -17,7 +17,16 @@ for accounts you cannot access anyway. See
 Yes. Register the MCP server **twice under different names** (for example `trade-admin` and
 `trade-client`) in your MCP client's configuration, each entry with its own environment
 variables. Each instance runs independently in its own mode, and your AI sees both tool sets
-side by side.
+side by side. The same approach connects you to **different servers** — see the next question.
+
+## Can I connect to more than one server (or broker) at once?
+
+Yes. The MCP runs as one process per connection, so register it **once per server**, each under
+its own name with its own `YB_BASE_URL` and credentials — two separate broker servers, a
+production and a test server, or admin on one and client on another. The entries run
+independently and their tools appear side by side; name them clearly (for example, one per
+broker) and tell the AI which one you mean. Step-by-step with a ready-to-paste example:
+[Configuration → Running more than one server](./CONFIGURATION.md#running-more-than-one-server).
 
 ## Why isn't this published on npm?
 

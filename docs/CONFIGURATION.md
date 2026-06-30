@@ -261,6 +261,63 @@ claude mcp add trade-server \
 > On Windows, write the path with doubled backslashes, e.g.
 > `"C:\\Users\\you\\trade-server-mcp\\dist\\index.js"`.
 
+### Running more than one server
+
+You can connect to more than one Trade Server at the same time — for example two separate
+broker servers, a production and a test server, or an admin connection to one server plus a
+trader connection to another. The MCP runs as one process per connection, so you simply
+**register it once per server**, each registration under its own name with its own settings.
+
+- Give each entry a **distinct name** (for example, one per broker) so you and the AI can tell
+  them apart.
+- Each entry carries its **own `env` block** — its own `YB_BASE_URL`, mode, and credentials.
+- The entries run as independent processes, so the AI sees every server's tools **side by
+  side**. When you ask for something, name the server you mean ("on broker A, …").
+
+**Claude Desktop** — two trader connections to two different servers, in
+`claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "trade-broker-a": {
+      "command": "npx",
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
+      "env": {
+        "YB_BASE_URL": "https://<broker-a-host>:<port>",
+        "YB_MODE": "client",
+        "YB_LOGIN": "<broker-a-login>",
+        "YB_PASSWORD": "<broker-a-password>"
+      }
+    },
+    "trade-broker-b": {
+      "command": "npx",
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
+      "env": {
+        "YB_BASE_URL": "https://<broker-b-host>:<port>",
+        "YB_MODE": "client",
+        "YB_LOGIN": "<broker-b-login>",
+        "YB_PASSWORD": "<broker-b-password>"
+      }
+    }
+  }
+}
+```
+
+Any combination works — admin on one server and client on another, production and test, and so
+on. Each connection is just another named entry with the credentials for that server (any of
+the three setups above).
+
+**Other hosts:** in VS Code the same idea applies under the `servers` key (see
+[VS Code setup](./VSCODE_SETUP.md)) — add a second named entry. The one exception is the
+**`.mcpb` Claude Desktop extension**, which installs as a single trader (client) connection with
+one set of details; to run more than one server, or any admin connection, use the JSON
+configuration shown above.
+
+> **One server per entry.** Each registration is fixed to its configured server and mode when it
+> starts — there is no switching between servers within a single entry. To reach another server,
+> add another entry.
+
 ### Other MCP clients
 
 Any MCP-compatible client that supports stdio servers can run the Trade Server MCP. Configure it
