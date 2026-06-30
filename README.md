@@ -7,7 +7,7 @@
 [![CI](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-2.0.2-blue)](https://github.com/yourbourse/trade-server-mcp/blob/main/CHANGELOG.md)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-7C3AED)](https://modelcontextprotocol.io/)
-![Tests](https://img.shields.io/badge/tests-153%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 
 <br>
