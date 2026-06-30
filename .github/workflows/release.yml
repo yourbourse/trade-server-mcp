@@ -1,0 +1,35 @@
+name: Release
+
+# On every version tag (e.g. v2.0.1), build the Claude Desktop extension (.mcpb)
+# and attach it to that tag's GitHub Release so users can download it directly.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # create releases and upload assets
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build the .mcpb bundle
+        run: npm run pack:mcpb
+      - name: Publish the .mcpb to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Create the release for this tag (with auto-generated notes) and attach the bundle;
+          # if the release already exists, just upload/replace the asset.
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            trade-server-mcp.mcpb \
+          || gh release upload "$GITHUB_REF_NAME" trade-server-mcp.mcpb --clobber

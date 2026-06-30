@@ -31,8 +31,8 @@ The walkthrough below uses **Claude Desktop** (the easiest). Using a different a
 - Install [Node.js](https://nodejs.org) and [git](https://git-scm.com) — one-time, click-through installers.
 - Install [Claude Desktop](https://claude.ai/download).
 
-> **Even simpler:** the one-click **[Claude Desktop extension (`.mcpb`)](docs/CLAUDE_DESKTOP_SETUP.md)**
-> installs everything through a form — no config file to edit.
+> **Even simpler:** the one-click **[Claude Desktop extension (`.mcpb`)](docs/CLAUDE_DESKTOP_SETUP.md#one-click-install-claude-desktop-extension)**
+> installs everything through a form — no config file to edit. Download it from the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest).
 
 ### 2. Set up
 

@@ -7,6 +7,22 @@ No coding, and **no prior experience with "MCP" required.**
 > **What's an MCP?** It's just a small helper that lets Claude talk to another system — here, your
 > YourBourse Trade Server. You install it once; after that you simply chat with Claude.
 
+## One-click install (Claude Desktop Extension)
+
+The easiest way — **no Node, no git, no config file to edit.** This is for **traders (client mode)**; admins should use the manual setup below.
+
+1. **Download the extension.** Go to the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) and download **`trade-server-mcp.mcpb`** from the **Assets** list. (Direct link: `https://github.com/yourbourse/trade-server-mcp/releases/latest/download/trade-server-mcp.mcpb`.)
+2. **Install it.** Double-click the downloaded `trade-server-mcp.mcpb` file — Claude Desktop opens an install dialog — and click **Install**. _(Alternatively, in Claude Desktop go to **Settings → Extensions** and drag the `.mcpb` file onto the window.)_
+3. **Fill in the form** Claude Desktop shows you:
+   - **Server address** — your Trade Server URL from your broker (e.g. `https://your-server.example.com`).
+   - **Account login** and **Password** — from your broker. (Your password is stored in your operating system's keychain, not in a plain file.)
+   - **Broker** — optional; leave it blank unless your broker tells you to set it.
+4. **Check it works.** Start a chat and ask _"run a health check."_ A healthy status means you're connected.
+
+That's it — you can skip the rest of this guide. Everything below is the **manual alternative** (install Node + edit a config file), which also covers **admin mode**.
+
+---
+
 ## What you'll need
 
 - About **15 minutes**.
