@@ -2,41 +2,45 @@
 
 # Trade Server MCP
 
-**Trade on YourBourse Trade Server from Claude and any MCP-compatible AI — as a broker or as a trader**
+**Trade on your YourBourse account from Claude and other AI assistants — just by asking.**
 
 [![CI](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/yourbourse/trade-server-mcp/blob/main/CHANGELOG.md)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A518-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-7C3AED)](https://modelcontextprotocol.io/)
 ![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)
 ![License](https://img.shields.io/badge/License-Proprietary-red.svg)
 
 <br>
 
-A [Model Context Protocol](https://modelcontextprotocol.io/) server that connects AI assistants
-to a YourBourse Trade Server. Ask your AI to check your account, pull live quotes, place and
-manage orders, or — in broker mode — operate across every account, group, and routing rule on
-the server. No scripts, no copy-pasting API responses.
-
-<br>
-
-[Getting Started](docs/GETTING_STARTED.md) · [Configuration](docs/CONFIGURATION.md) · [Tools Reference](docs/TOOLS_REFERENCE.md) · [Usage Examples](docs/USAGE_EXAMPLES.md) · [Architecture](docs/ARCHITECTURE.md)
+A [Model Context Protocol](https://modelcontextprotocol.io/) server that connects your AI assistant
+to a YourBourse Trade Server. Ask it to check your account, pull live quotes, and place or manage
+orders — no scripts, no copy-pasting API responses. Brokers get a server-wide **admin mode** too.
 
 </div>
 
 ---
 
-## ⚡ New to MCP? Set up Claude Desktop in 5 steps
+## ▶ Get started in 3 steps
 
-Never used an MCP server before? This is for you — you'll be talking to your trading account through
-Claude in about 10 minutes, with no coding.
+You'll be talking to your trading account through Claude in about **10 minutes, with no coding**.
+The walkthrough below uses **Claude Desktop** (the easiest). Using a different app? See
+[Using a different app](#using-a-different-app) just below.
 
-1. **Install the basics** — [Node.js](https://nodejs.org) and [git](https://git-scm.com) (one-time).
-2. **Install [Claude Desktop](https://claude.ai/download).**
-3. **Open the config file** — in Claude Desktop: Settings → Developer → **Edit Config**.
-4. **Paste the block below** into that file and fill in the three details from your broker.
-5. **Fully restart Claude Desktop**, then ask it: *"Run a health check on the trade server."*
+### 1. Install
+
+- Install [Node.js](https://nodejs.org) and [git](https://git-scm.com) — one-time, click-through installers.
+- Install [Claude Desktop](https://claude.ai/download).
+
+> **Even simpler:** the one-click **[Claude Desktop extension (`.mcpb`)](docs/CLAUDE_DESKTOP_SETUP.md)**
+> installs everything through a form — no config file to edit.
+
+### 2. Set up
+
+In Claude Desktop, open **Settings → Developer → Edit Config**:
+
+![Claude Desktop Settings → Developer → Edit Config](docs/images/claude-desktop-setup/07-settings-developer-editconfig.png)
+
+Paste this in, and fill in the **three details from your broker** (your normal trading account login):
 
 ```json
 {
@@ -55,18 +59,38 @@ Claude in about 10 minutes, with no coding.
 }
 ```
 
-👉 **New to all this? Follow the [full click-by-click guide with screenshots](docs/CLAUDE_DESKTOP_SETUP.md).**
+![The config file with the trade-server block pasted in](docs/images/claude-desktop-setup/09-config-file-pasted.png)
 
-**Using VS Code instead?** Follow the [VS Code / GitHub Copilot setup guide](docs/VSCODE_SETUP.md).
-**Using Codex?** Follow the [Codex setup guide](docs/CODEX_SETUP.md).
-**Using ChatGPT?** It connects only to hosted servers, not a local one like this — [see the note](docs/VSCODE_SETUP.md#using-chatgpt-instead).
+### 3. Use it
 
-> Most people should use the setup above. You only need to clone and build the repository if you're a
-> developer who wants to read or modify the code.
+**Fully quit and reopen Claude Desktop**, then ask it:
+
+> *"Run a health check on the trade server."*
+
+If it reports the server's time and version, you're connected — start asking for quotes, your
+balance, or to place a trade.
+
+![Claude returning a successful health check from the trade server](docs/images/claude-desktop-setup/12-health-check-result.png)
+
+👉 **Want every click with screenshots?** Follow the full
+**[Claude Desktop Setup guide](docs/CLAUDE_DESKTOP_SETUP.md)**.
+
+#### Using a different app?
+
+| App | Guide |
+|---|---|
+| **VS Code (GitHub Copilot)** | [VS Code setup](docs/VSCODE_SETUP.md) |
+| **OpenAI Codex** | [Codex setup](docs/CODEX_SETUP.md) |
+| **Claude Code (CLI)** | one command — see [Configuration](docs/CONFIGURATION.md#configuration-examples) |
+| **ChatGPT** | Can't run a local server like this — [here's why](docs/VSCODE_SETUP.md#using-chatgpt-instead) |
+
+> **Broker administrator?** Use `YB_MODE=admin` with your `YB_API_KEY` + `YB_SECRET_KEY` — see
+> [Admin Mode](docs/ADMIN_MODE.md). &nbsp;·&nbsp; Issued an API **token pair** instead of a password?
+> See [Getting an API token pair](docs/CONFIGURATION.md#getting-an-api-token-pair).
 
 ---
 
-## Highlights
+## What you can do
 
 | Feature | Description |
 |---------|-------------|
@@ -77,52 +101,11 @@ Claude in about 10 minutes, with no coding.
 | **Market data & indicators** | Quotes, market depth, OHLCV candles, currency conversion; admin mode adds locally computed indicators (RSI, MACD, EMA, Bollinger Bands, and more) |
 | **HMAC auth with auto-refresh** | Every write is HMAC-SHA256 signed; client login sessions refresh automatically before expiry — no manual token handling |
 | **Safety by design** | Order-placing requests are never retried on connection errors (no duplicate fills); bulk tools report per-item outcomes; client sessions cannot touch other accounts |
-| **Zero codegen** | Every tool is hand-written with intent-rich descriptions your AI actually understands, and checked against the server's OpenAPI contract in tests |
+| **Confirm before you trade** | Anything that moves money is a two-step **plan → commit** — your AI previews the order and nothing executes until you confirm |
 
 ---
 
-## Quick Start
-
-New to MCP and on Claude Desktop? Use the **5-step setup above**, or the full
-[Claude Desktop Setup guide](docs/CLAUDE_DESKTOP_SETUP.md). This section is the condensed reference
-for every client.
-
-**No-clone install (recommended).** Node.js 18+ and git are all you need — your MCP client fetches,
-builds, and runs the server straight from this repository. It tracks the **latest version on the
-`main` branch** (a moving target, not a fixed release), so fixes and improvements reach you without
-editing your config — clear the npx cache when you want the newest `main`, since npx caches by spec
-and may keep running its cached copy until you do. Point your client's `command`/`args`
-at `npx -y github:yourbourse/trade-server-mcp`; complete per-client config snippets (Claude Desktop,
-Claude Code, and others), both modes, and every environment variable are in
-[Configuration](docs/CONFIGURATION.md).
-
-**Or clone and build** if you prefer a local checkout you can read and modify:
-
-```bash
-git clone https://github.com/yourbourse/trade-server-mcp.git
-cd trade-server-mcp
-npm ci
-npm run build
-```
-
-then use `"command": "node", "args": ["<path-to-repo>/dist/index.js"]` with the same `env` block.
-
-Broker administrators use `YB_MODE=admin` with `YB_API_KEY` / `YB_SECRET_KEY` instead — see
-[Admin Mode](docs/ADMIN_MODE.md).
-
-**Finally, restart your MCP client** so it launches the server — then ask your AI:
-*"What's my account state?"*
-
-> **Pinning a version (advanced).** The default install follows the `main` branch (latest code). If
-> you need a reproducible, immutable build, pin a specific release tag or commit — see
-> [Configuration](docs/CONFIGURATION.md#pinning-a-version) for the syntax.
-
-First time setting up? The [Getting Started guide](docs/GETTING_STARTED.md) walks through everything,
-including which credentials you need and how to verify the first tool call.
-
----
-
-## Modes
+## Trader or broker?
 
 One process runs exactly one mode — the tool set is decided at startup from your credentials.
 
@@ -178,7 +161,42 @@ Full guides: [Client Mode](docs/CLIENT_MODE.md) · [Admin Mode](docs/ADMIN_MODE.
 
 ---
 
-## Architecture Overview
+## Security
+
+Your password is never transmitted — in client login mode it is used only as the local HMAC
+signing secret for the sign-in request. Credentials live exclusively in your MCP client's
+configuration and the server's process environment; nothing is ever written to disk, logged,
+or echoed back to the AI. Order-placing requests are never retried on connection errors, so a
+network blip cannot turn into a duplicate fill. The project ships **no npm package by
+design**: distribution is npx straight from GitHub — the `main` branch by default, or a pinned tag
+or commit for a reproducible build — never the npm registry, keeping the supply chain to four direct
+runtime dependencies. Full details, recommended practices, and the vulnerability reporting
+process are in [SECURITY.md](docs/SECURITY.md).
+
+---
+
+<details>
+<summary><b>For developers</b> — clone &amp; build, architecture, project layout, scripts</summary>
+
+<br>
+
+Most users never need this — the setup guides above are all you need to run the server. This
+section is for reading or modifying the source.
+
+### Run from a local clone
+
+```bash
+git clone https://github.com/yourbourse/trade-server-mcp.git
+cd trade-server-mcp
+npm ci
+npm run build
+```
+
+Then point your MCP client at the build with `"command": "node", "args": ["<path-to-repo>/dist/index.js"]`
+and the same `env` block as above. (The no-clone `npx` install in the guides is recommended for
+everyone else.)
+
+### Architecture overview
 
 ```
 +--------------------+      stdio (JSON-RPC / MCP)
@@ -218,8 +236,6 @@ Full guides: [Client Mode](docs/CLIENT_MODE.md) · [Admin Mode](docs/ADMIN_MODE.
          +---------------------------------------------+
 ```
 
-### Key Modules
-
 | Module | Purpose |
 |--------|---------|
 | `src/index.ts` | Entry point: parse config, build the auth provider and clients for the selected mode, register tools, connect stdio |
@@ -230,12 +246,10 @@ Full guides: [Client Mode](docs/CLIENT_MODE.md) · [Admin Mode](docs/ADMIN_MODE.
 | `src/auth/` | HMAC-SHA256 signing, static key credentials, and the client login lifecycle with auto-refresh |
 | `src/tools/admin/`, `src/tools/client/` | Tool implementations — a zod schema plus an async function per tool, grouped by category |
 
-The full picture — mode selection, the life of a tool call, retry policy, and design
-decisions — is in [Architecture](docs/ARCHITECTURE.md).
+The full picture — mode selection, the life of a tool call, retry policy, and design decisions —
+is in [Architecture](docs/ARCHITECTURE.md).
 
----
-
-## Project Structure
+### Project structure
 
 ```
 trade-server-mcp/
@@ -253,7 +267,7 @@ trade-server-mcp/
 │   ├── tools/
 │   │   ├── admin/             # trading, account, market-data, config tool modules
 │   │   └── client/            # trading, account, market-data tool modules
-│   └── test/                  # node:test suite — 85 tests
+│   └── test/                  # node:test suite
 ├── docs/                      # Full documentation set (see index above)
 ├── reference/
 │   └── openapi.json           # Trade Server API contract the tools are checked against
@@ -267,15 +281,13 @@ trade-server-mcp/
 └── LICENSE
 ```
 
----
-
-## Scripts
+### Scripts
 
 | Command | Description |
 |---------|-------------|
 | `npm run build` | Compile TypeScript to `dist/` |
 | `npm run dev` | Compile in watch mode |
-| `npm test` | Build and run the full test suite (85 tests, `node --test`) |
+| `npm test` | Build and run the full test suite (148 tests, `node --test`) |
 | `npm run lint` | ESLint over the project |
 | `npm run format` / `npm run format:check` | Prettier write / verify |
 | `npm run type-check` | TypeScript type checking without emitting |
@@ -297,19 +309,7 @@ YB_MODE=client YB_LOGIN=... YB_PASSWORD=... YB_BASE_URL=... node scripts/regress
 
 Exit code 0 means all checks passed.
 
----
-
-## Security
-
-Your password is never transmitted — in client login mode it is used only as the local HMAC
-signing secret for the sign-in request. Credentials live exclusively in your MCP client's
-configuration and the server's process environment; nothing is ever written to disk, logged,
-or echoed back to the AI. Order-placing requests are never retried on connection errors, so a
-network blip cannot turn into a duplicate fill. The project ships **no npm package by
-design**: distribution is npx straight from GitHub — the `main` branch by default, or a pinned tag
-or commit for a reproducible build — never the npm registry, keeping the supply chain to four direct
-runtime dependencies. Full details, recommended practices, and the vulnerability reporting
-process are in [SECURITY.md](docs/SECURITY.md).
+</details>
 
 ---
 
