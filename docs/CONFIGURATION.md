@@ -14,7 +14,8 @@ unset.
 
 | Variable | Applies to | Required | Description |
 |---|---|---|---|
-| `YB_BASE_URL` | All modes | Yes | Base URL of your YourBourse Trade Server, including the scheme and port, with no trailing slash — for example `https://<your-server-host>:<port>`. The MCP appends `/api/v1/...` to this URL for every request. **The port depends on the mode**: the client (public) API and the admin API are served on different ports of the same Trade Server — use the client port for client mode and the admin port for admin mode; your broker or server operator tells you which is which. |
+| `YB_BASE_URL` | All modes | Yes | Base URL of your YourBourse Trade Server, including the scheme and port, with no trailing slash — for example `https://<your-server-host>:<port>`. The MCP appends `/api/v1/...` to this URL for every request. **HTTPS is required by default** to protect credentials in transit. **The port depends on the mode**: the client (public) API and the admin API are served on different ports of the same Trade Server — use the client port for client mode and the admin port for admin mode; your broker or server operator tells you which is which. |
+| `YB_ALLOW_INSECURE_BASE_URL` | All modes | No | Optional opt-in for local development only. When set to `true`, `1`, or `yes`, the server accepts `http://` base URLs (it still rejects other schemes and embedded URL credentials). Leave unset in production. |
 | `YB_MODE` | All modes | Recommended | `admin` or `client`. Optional when the mode can be inferred from your credential variables (see below), but always safe to set explicitly. |
 | `YB_API_KEY` | Admin mode, or client mode with a token pair | Yes, in those setups | The API key (public half of the key pair) issued for your account. |
 | `YB_SECRET_KEY` | Admin mode, or client mode with a token pair | Yes, in those setups | The secret key (signing half of the key pair). It is used only to sign requests locally and is never transmitted. |
@@ -401,6 +402,10 @@ Trade Server MCP configuration:
 | Error message | What to do |
 |---|---|
 | `Missing YB_BASE_URL.` | Set `YB_BASE_URL` to your Trade Server's URL, e.g. `https://<your-server-host>:<port>`. Remember that an empty or whitespace-only value counts as unset. |
+| `YB_BASE_URL must be a valid URL.` | The value could not be parsed as a URL. Include the scheme and host, e.g. `https://<your-server-host>:<port>`. |
+| `YB_BASE_URL must use https:// to protect API credentials in transit. Set YB_ALLOW_INSECURE_BASE_URL=true only for local development.` | By default only `https://` is accepted. For local non-TLS testing only, set `YB_ALLOW_INSECURE_BASE_URL=true` (or `1`/`yes`) and use an `http://` URL. |
+| `YB_BASE_URL must use http:// or https:// when YB_ALLOW_INSECURE_BASE_URL is enabled.` | Even with insecure mode enabled, only HTTP(S) URLs are valid. Replace unsupported schemes (for example `ws://`) with `http://` or `https://`. |
+| `YB_BASE_URL must not include username/password credentials.` | Remove the embedded `user:pass@` from the URL. Credentials belong in `YB_API_KEY`/`YB_SECRET_KEY` or `YB_LOGIN`/`YB_PASSWORD`, never in the URL. |
 | `Admin mode requires YB_API_KEY.` | You are in admin mode (explicitly, or inferred from `YB_SECRET_KEY`) but `YB_API_KEY` is missing. Add it, or switch to a client setup. |
 | `Admin mode requires YB_SECRET_KEY.` | Same as above, but the secret half of the pair is missing. Add `YB_SECRET_KEY`. |
 | `Client mode: set either YB_LOGIN/YB_PASSWORD or YB_API_KEY/YB_SECRET_KEY, not both.` | You provided both credential styles in client mode. Remove the pair you do not intend to use. |

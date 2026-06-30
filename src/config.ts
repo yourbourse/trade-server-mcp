@@ -13,7 +13,8 @@ const HELP = `Trade Server MCP configuration:
   Admin mode  (brokers): YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY [+ YB_MODE=admin] (set YB_MODE explicitly if mixing credential variables)
   Client mode (traders): YB_BASE_URL + YB_LOGIN + YB_PASSWORD [+ YB_BROKER] + YB_MODE=client
   Client mode (token):   YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY + YB_MODE=client
-  Optional (all modes):  YB_REQUEST_TIMEOUT_MS (per-request timeout in ms; positive integer; default 10000)`;
+  Optional (all modes):  YB_REQUEST_TIMEOUT_MS (per-request timeout in ms; positive integer; default 10000)
+  Optional (all modes):  YB_ALLOW_INSECURE_BASE_URL (true/1/yes — allow http:// base URLs for local development only; https:// is required otherwise)`;
 
 export function parseConfig(env: Record<string, string | undefined>): ServerConfig {
   const v = (name: string) => {
@@ -29,6 +30,31 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
 
   const baseUrl = v("YB_BASE_URL");
   if (!baseUrl) throw new Error(`Missing YB_BASE_URL.\n${HELP}`);
+
+  // Transport security: credentials are signed/sent on every request, so the base URL must use a
+  // secure transport. HTTPS is required by default; plain http:// is allowed only when explicitly
+  // opted in for local development. Embedded URL credentials are always rejected (leak risk).
+  const allowInsecureBaseUrl = /^(1|true|yes)$/i.test(v("YB_ALLOW_INSECURE_BASE_URL") ?? "");
+  let parsedBaseUrl: URL;
+  try {
+    parsedBaseUrl = new URL(baseUrl);
+  } catch {
+    throw new Error(`YB_BASE_URL must be a valid URL.\n${HELP}`);
+  }
+  if (allowInsecureBaseUrl) {
+    if (parsedBaseUrl.protocol !== "https:" && parsedBaseUrl.protocol !== "http:") {
+      throw new Error(
+        `YB_BASE_URL must use http:// or https:// when YB_ALLOW_INSECURE_BASE_URL is enabled.\n${HELP}`,
+      );
+    }
+  } else if (parsedBaseUrl.protocol !== "https:") {
+    throw new Error(
+      `YB_BASE_URL must use https:// to protect API credentials in transit. Set YB_ALLOW_INSECURE_BASE_URL=true only for local development.\n${HELP}`,
+    );
+  }
+  if (parsedBaseUrl.username || parsedBaseUrl.password) {
+    throw new Error(`YB_BASE_URL must not include username/password credentials.\n${HELP}`);
+  }
 
   const timeout_raw = v("YB_REQUEST_TIMEOUT_MS");
   let requestTimeoutMs = 10_000;

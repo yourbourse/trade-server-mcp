@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-06-30
+
+### Security
+
+- **Enforce secure transport for `YB_BASE_URL`.** The base URL is now validated at startup: `https://` is required by default to protect API credentials in transit, embedded `user:pass@` URL credentials are rejected, and malformed URLs fail with a clear message. A new opt-in `YB_ALLOW_INSECURE_BASE_URL` (`true`/`1`/`yes`) allows `http://` for local development only (other schemes such as `ws://` are still rejected).
+
 ## [2.0.0] - 2026-06-29
 
 ### Changed

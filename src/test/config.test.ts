@@ -117,3 +117,57 @@ test("zero or negative YB_REQUEST_TIMEOUT_MS throws", () => {
     /positive integer/,
   );
 });
+
+test("non-https YB_BASE_URL is rejected by default", () => {
+  assert.throws(
+    () =>
+      parseConfig({
+        YB_BASE_URL: "http://ts.example.com:22236",
+        YB_API_KEY: "k",
+        YB_SECRET_KEY: "s",
+      }),
+    /must use https:\/\//,
+  );
+});
+
+test("non-https YB_BASE_URL is allowed when explicitly enabled for local development", () => {
+  const c = parseConfig({
+    YB_BASE_URL: "http://localhost:22236",
+    YB_ALLOW_INSECURE_BASE_URL: "true",
+    YB_API_KEY: "k",
+    YB_SECRET_KEY: "s",
+  });
+  assert.equal(c.mode, "admin");
+});
+
+test("insecure-mode flag still rejects non-http(s) schemes", () => {
+  assert.throws(
+    () =>
+      parseConfig({
+        YB_BASE_URL: "ws://localhost:22236",
+        YB_ALLOW_INSECURE_BASE_URL: "true",
+        YB_API_KEY: "k",
+        YB_SECRET_KEY: "s",
+      }),
+    /must use http:\/\/ or https:\/\//,
+  );
+});
+
+test("YB_BASE_URL with embedded credentials is rejected", () => {
+  assert.throws(
+    () =>
+      parseConfig({
+        YB_BASE_URL: "https://user@ts.example.com:22236",
+        YB_API_KEY: "k",
+        YB_SECRET_KEY: "s",
+      }),
+    /must not include username\/password/,
+  );
+});
+
+test("malformed YB_BASE_URL is rejected with a clear message", () => {
+  assert.throws(
+    () => parseConfig({ YB_BASE_URL: "not a url", YB_API_KEY: "k", YB_SECRET_KEY: "s" }),
+    /must be a valid URL/,
+  );
+});
