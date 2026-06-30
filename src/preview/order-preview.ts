@@ -43,7 +43,9 @@ function humanSummary(o: OrderSummary): string {
           ? `@ ${o.limitPrice}`
           : o.stopPrice !== undefined
             ? `stop @ ${o.stopPrice}`
-            : "@ market";
+            : o.orderType && o.orderType !== "Market"
+              ? "(price required)" // never imply a market fill for a price-conditional order
+              : "@ market";
     const parts = [
       `${(o.side ?? "").toUpperCase()} ${o.quantity} ${o.symbol}`,
       o.orderType,

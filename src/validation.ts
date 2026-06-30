@@ -26,3 +26,23 @@ export function completenessMessage(
     .join(", ");
   return `${toolLabel} needs: ${need}.${got ? ` Got: ${got}.` : ""}`;
 }
+
+/**
+ * Order-type-conditional price completeness. A Limit/StopLimit order needs a `limitPrice`; a
+ * Stop/StopLimit order needs a `stopPrice`. Returns a "needs X" message when a required price is
+ * missing, or null when complete. Run AFTER the base completeness check (so orderType is known) —
+ * without this, a price-conditional order with no price would preview as "@ market" and still issue
+ * a commit token for an under-specified order.
+ */
+export function orderPriceCompleteness(
+  toolLabel: string,
+  params: { orderType?: unknown; limitPrice?: unknown; stopPrice?: unknown },
+): string | null {
+  const ot = params.orderType;
+  const missing: string[] = [];
+  if ((ot === "Limit" || ot === "StopLimit") && params.limitPrice == null)
+    missing.push("limitPrice");
+  if ((ot === "Stop" || ot === "StopLimit") && params.stopPrice == null) missing.push("stopPrice");
+  if (missing.length === 0) return null;
+  return `${toolLabel} needs ${missing.join(" and ")} for a ${String(ot)} order.`;
+}

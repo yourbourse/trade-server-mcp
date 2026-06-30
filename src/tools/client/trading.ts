@@ -2,7 +2,7 @@ import { z } from "zod";
 import { ApiError, RestClient } from "../../rest-client.js";
 import { issuePlan, takeCommit } from "../../preview/plan-commit.js";
 import { buildOrderPreview } from "../../preview/order-preview.js";
-import { completenessMessage } from "../../validation.js";
+import { completenessMessage, orderPriceCompleteness } from "../../validation.js";
 
 // Order placement is non-idempotent: a connection reset does not prove the
 // server never received the order, so a transport-level retry could fill twice.
@@ -74,6 +74,8 @@ export async function placeOrderPlan(
     { name: "timeInForce", label: "time-in-force", options: ["IOC", "FOK", "GTC"] },
   ]);
   if (need) return { needMoreInfo: need };
+  const priceNeed = orderPriceCompleteness("place_order_plan", params);
+  if (priceNeed) return { needMoreInfo: priceNeed };
   const preview = await buildOrderPreview(client, {
     action: "place",
     symbol: params.symbol,

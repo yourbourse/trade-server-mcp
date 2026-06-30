@@ -9,10 +9,18 @@ import { RestClient } from "./rest-client.js";
 import { WsClient } from "./ws-client.js";
 import { registerAdminTools } from "./register-admin.js";
 import { registerClientTools } from "./register-client.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+// Report the real release version to MCP hosts by reading it from package.json (no manual drift).
+const { version } = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "package.json"), "utf8"),
+) as { version: string };
 
 async function main() {
   const config = parseConfig(process.env);
-  const server = new McpServer({ name: "trade-server", version: "2.0.0" });
+  const server = new McpServer({ name: "trade-server", version });
 
   if (config.mode === "admin") {
     const restClient = new RestClient(

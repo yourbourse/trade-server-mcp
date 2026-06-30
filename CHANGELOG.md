@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-06-30
+
+### Fixed
+
+- **Preview accuracy for price-conditional orders.** `place_order_plan` (client and admin) now requires `limitPrice` for **Limit/StopLimit** orders and `stopPrice` for **Stop/StopLimit** orders before issuing a commit token, and the order preview no longer renders a price-conditional order as "@ market" when its price is missing. Previously such an order could be planned without its price and shown as a market order.
+- The MCP server now reports its version from `package.json` instead of a hardcoded string (which had drifted out of sync with the release).
+
 ## [2.0.1] - 2026-06-30
 
 ### Security

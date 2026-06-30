@@ -24,6 +24,27 @@ test("preview always returns a human summary even if data calls fail", async () 
   assert.ok(p.note); // notes that live market/account data was unavailable
 });
 
+test("preview never implies '@ market' for a price-conditional order missing its price", async () => {
+  const client = {
+    get: async () => {
+      throw new Error("502");
+    },
+    post: async () => {
+      throw new Error("502");
+    },
+  } as never;
+  const p = await buildOrderPreview(client, {
+    action: "place",
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "Limit",
+    timeInForce: "GTC",
+  });
+  assert.doesNotMatch(p.summary, /@ market/i);
+  assert.match(p.summary, /price required/i);
+});
+
 test("preview includes quote + free margin when data calls succeed", async () => {
   const client = {
     get: async (path: string) =>

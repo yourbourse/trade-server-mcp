@@ -41,6 +41,20 @@ test("plan completeness messages name the *_plan tool, not the removed one-shot 
   assert.match(cp.needMoreInfo!, /close_position_plan/);
 });
 
+test("place_order_plan requires limitPrice for a Limit order before issuing a token", async () => {
+  const fake = { get: async () => ({}), post: async () => ({}) } as never;
+  const r = (await t.placeOrderPlan(fake, {
+    symbol: "EURUSD",
+    side: "buy",
+    quantity: 0.1,
+    orderType: "Limit",
+    timeInForce: "GTC",
+  })) as { needMoreInfo?: string; commitToken?: string };
+  assert.ok(r.needMoreInfo, "expected needMoreInfo for a Limit order with no limitPrice");
+  assert.match(r.needMoreInfo!, /limitPrice/);
+  assert.equal(r.commitToken, undefined); // no token for an under-specified order
+});
+
 test("place_order no longer offers CloseBy or position-ID fields; hedged closes use close_by (Copilot)", () => {
   // CloseBy is rejected by both the commit and plan schemas
   assert.throws(() =>
