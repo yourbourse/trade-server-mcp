@@ -206,11 +206,11 @@ export class WsClient {
     return new Promise<unknown[]>((resolve, reject) => {
       const cleanup = () => {
         this.subscriptionHandlers.delete(reqId);
-        try {
-          this.unsubscribe(channel, payload, reqId);
-        } catch {
-          // best-effort: the socket may already be closed
-        }
+        // unsubscribe is async, so a synchronous throw inside it surfaces as a rejected promise that
+        // a try/catch here would NOT catch — swallow it with .catch to keep this best-effort.
+        void this.unsubscribe(channel, payload, reqId).catch(() => {
+          /* best-effort: the socket may already be closed */
+        });
       };
 
       this.subscriptionHandlers.set(reqId, (data) => {
