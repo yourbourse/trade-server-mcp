@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `WsClient.connect()` now rejects (instead of hanging) when the socket closes before it opens — e.g. the server refuses the connection, or `disconnect()` is called mid-connect — so callers awaiting `connect()`/`ensureConnected()` no longer hang forever.
+
 ## [2.0.3] - 2026-06-30
 
 ### Fixed

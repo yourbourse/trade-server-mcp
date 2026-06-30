@@ -40,10 +40,12 @@ export class WsClient {
       .replace(/^http:\/\//i, "ws://");
     const url = `${wsUrl}/ws/v1`;
 
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
+      let opened = false;
       this.ws = this.wsFactory(url);
 
       this.ws.on("open", () => {
+        opened = true;
         this.connected = true;
         this.startPingPong();
         resolve();
@@ -57,12 +59,22 @@ export class WsClient {
         this.connected = false;
         this.stopPingPong();
         this.rejectPending(new Error("WebSocket closed"));
+        if (!opened) {
+          // Closed before it ever opened (server refused, or disconnect mid-connect): settle the
+          // connect() promise so callers awaiting connect()/ensureConnected() don't hang forever.
+          opened = true;
+          reject(new Error("WebSocket closed before connecting"));
+          return;
+        }
         if (this.isShuttingDown) return; // explicit shutdown is terminal
         this.attemptReconnect();
       });
 
       this.ws.on("error", (err) => {
-        if (!this.connected) reject(err);
+        if (!opened) {
+          opened = true;
+          reject(err);
+        }
       });
 
       this.ws.on("ping", (data) => {

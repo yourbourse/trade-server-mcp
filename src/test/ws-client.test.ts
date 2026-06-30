@@ -68,6 +68,13 @@ test("derives a case-insensitive wss:// URL even from an uppercase base-URL sche
   assert.match(capturedUrl, /^wss:\/\/ts\.local\/ws\/v1$/);
 });
 
+test("connect() rejects (no hang) if the socket closes before it opens", async () => {
+  const { client, sockets } = makeClient();
+  const p = client.connect();
+  sockets[0].emit("close"); // close arrives before any "open"
+  await assert.rejects(() => p, /closed before connecting/i);
+});
+
 test("explicit disconnect does not reconnect", async () => {
   const { client, sockets } = await openClient();
   assert.equal(client.isConnected, true);
