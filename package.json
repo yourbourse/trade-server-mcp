@@ -1,6 +1,6 @@
 {
   "name": "trade-server-mcp",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "MCP server for the YourBourse Trade Server — broker (admin) and trader (client) modes",
   "author": "YourBourse",
   "license": "SEE LICENSE IN LICENSE",

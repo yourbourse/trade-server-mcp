@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-06-30
+
 ### Fixed
 
 - WebSocket URL derivation now converts the base-URL scheme with an anchored, case-insensitive match, so an uppercase scheme (e.g. `HTTPS://`) — which passes config validation — no longer yields an invalid WebSocket URL.
-- `getSnapshot` no longer uses an async Promise executor (a subscribe rejection can no longer leak as an unhandled rejection); the subscribe promise is driven with `.then`/`.catch`.
+- `getSnapshot` no longer uses an async Promise executor and is guarded against late-handler / double-cleanup races (a `settled` flag, a single restartable timer, and a best-effort `.catch`'d unsubscribe), so a subscribe rejection can never leak as an unhandled rejection.
 - The `place_order_plan` completeness hint now lists all valid time-in-force values (`IOC`, `FOK`, `GTC`, `GTD`, `Day`, `Ms`) instead of a subset, so it no longer implies the others are unsupported.
 
 ## [2.0.2] - 2026-06-30
@@ -83,7 +85,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial internal release: admin mode with 38 tools — trading, account management, market data with locally computed technical indicators, server configuration — plus 4 MCP resources.
 
-[Unreleased]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.3...HEAD
+[2.0.3]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.2...v2.0.3
+[2.0.2]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.1...v2.0.2
+[2.0.1]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/yourbourse/trade-server-mcp/compare/v1.1.1...v2.0.0
 [1.1.1]: https://github.com/yourbourse/trade-server-mcp/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/yourbourse/trade-server-mcp/compare/v1.0.0...v1.1.0
