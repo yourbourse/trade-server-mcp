@@ -21,10 +21,13 @@ pull quotes, and place orders. No coding — you'll fill in one short form.
 ## Step 1 — Open the custom-MCP form
 
 1. Open the **account menu** at the bottom-left (your name) and choose **Settings** (`Ctrl+,`).
+
+   ![The Codex account menu open, with Settings highlighted](images/codex-setup/01-open-settings.png)
+
 2. In Settings, under **Integrations**, click **MCP servers**, then add a custom MCP. Make sure the
    **STDIO** tab is selected (not "Streamable HTTP").
 
-![Codex Settings → MCP servers → the custom-MCP form, with STDIO selected](images/codex-setup/01-mcp-servers-form.png)
+   ![Codex Settings → MCP servers → the custom-MCP form, with STDIO selected](images/codex-setup/02-mcp-servers-form.png)
 
 ## Step 2 — Fill in the form
 
@@ -56,7 +59,7 @@ your broker:
 (common on Windows). Use any real path, for example `C:\Users\<you>\Documents` on Windows or `~` on
 macOS/Linux. Leave **Environment variable passthrough** empty.
 
-![The filled form: npx, the two arguments, the four environment variables, and a real working directory](images/codex-setup/02-filled-form.png)
+![The filled form: npx, the two arguments, the four environment variables, and a real working directory](images/codex-setup/03-filled-form.png)
 
 Click **Save**.
 
