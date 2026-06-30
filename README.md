@@ -2,7 +2,7 @@
 
 # Trade Server MCP
 
-**Trade on your YourBourse account from Claude and other AI assistants — just by asking.**
+**Trade on a YourBourse account from Claude and other AI assistants — just by asking.**
 
 [![CI](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/yourbourse/trade-server-mcp/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/yourbourse/trade-server-mcp/blob/main/CHANGELOG.md)
@@ -82,7 +82,6 @@ balance, or to place a trade.
 | **VS Code (GitHub Copilot)** | [VS Code setup](docs/VSCODE_SETUP.md) |
 | **OpenAI Codex** | [Codex setup](docs/CODEX_SETUP.md) |
 | **Claude Code (CLI)** | one command — see [Configuration](docs/CONFIGURATION.md#configuration-examples) |
-| **ChatGPT** | Can't run a local server like this — [here's why](docs/VSCODE_SETUP.md#using-chatgpt-instead) |
 
 > **Broker administrator?** Use `YB_MODE=admin` with your `YB_API_KEY` + `YB_SECRET_KEY` — see
 > [Admin Mode](docs/ADMIN_MODE.md). &nbsp;·&nbsp; Issued an API **token pair** instead of a password?
