@@ -27,7 +27,7 @@ Then install it in Claude Desktop:
 
    ![Choose the .mcpb file](images/mcpb-setup/03-choose-file.png)
 
-4. Review the extension — it should show a **version number** (e.g. **2.0.1**) and **"All requirements met"** — then click **Install**.
+4. Review the extension — it should show a **version number** (**2.1.0** or later; manager mode needs 2.1.0+) and **"All requirements met"** — then click **Install**.
 
    ![Extension preview with Install button](images/mcpb-setup/04-preview-install.png)
 

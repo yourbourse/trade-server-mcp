@@ -74,7 +74,7 @@ each tool call. The `<hint>` is a targeted diagnosis. There are four possible hi
 | `Could not reach the Trade Server: check YB_BASE_URL and network connectivity.` | No HTTP response at all — wrong URL or port, DNS failure, firewall, VPN, or the sign-in timed out (10 seconds). | Confirm `YB_BASE_URL` (scheme, host, and port) with your broker, then check basic connectivity to that host from your machine. |
 | `Sign-in to the Trade Server failed (HTTP <status>).` | Any other HTTP status (for example a 5xx server error). | Check the full log line for the response body, and contact your broker if it persists. |
 
-> **Using the one-click `.mcpb` extension?** To fix a mistyped login, password, or API key, edit the saved values via **Settings → Extensions → trade-server-mcp → Configure**, then turn the extension off and back on — see [Change your credentials](./CLAUDE_DESKTOP_SETUP.md#change-your-credentials-eg-after-a-wrong-password) in the Claude Desktop guide.
+> **Using the one-click `.mcpb` extension?** To fix a mistyped login, password, API key, or API secret, edit the saved values via **Settings → Extensions → trade-server-mcp → Configure**, then turn the extension off and back on — see [Change your credentials](./CLAUDE_DESKTOP_SETUP.md#change-your-credentials-eg-after-a-wrong-password) in the Claude Desktop guide.
 
 The log also contains the raw failure line, e.g.
 `POST /authorize failed (401): <response body>`, which includes the server's error body —

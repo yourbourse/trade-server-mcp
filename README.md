@@ -48,7 +48,7 @@ For traders **and** managers/brokers — no Node, git, or config file needed. Th
 
    ![Choose the .mcpb file](docs/images/mcpb-setup/03-choose-file.png)
 
-4. Review (**Version 2.0.1** or later, "All requirements met") → **Install**
+4. Review (**Version 2.1.0** or later — manager mode needs 2.1.0+ — and "All requirements met") → **Install**
 
    ![Extension preview](docs/images/mcpb-setup/04-preview-install.png)
 
