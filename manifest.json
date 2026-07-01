@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "trade-server-mcp",
   "version": "2.0.4",
-  "description": "Trade on a YourBourse Trade Server from Claude — as a trader.",
+  "description": "Trade on a YourBourse Trade Server from Claude — as a trader (login & password) or as a manager/broker (API key & secret).",
   "author": { "name": "YourBourse", "url": "https://yourbourse.com" },
   "icon": "icon.png",
   "server": {
@@ -13,10 +13,11 @@
       "args": ["${__dirname}/dist/index.js"],
       "env": {
         "YB_BASE_URL": "${user_config.yb_base_url}",
-        "YB_MODE": "client",
         "YB_LOGIN": "${user_config.yb_login}",
         "YB_PASSWORD": "${user_config.yb_password}",
-        "YB_BROKER": "${user_config.yb_broker}"
+        "YB_BROKER": "${user_config.yb_broker}",
+        "YB_API_KEY": "${user_config.yb_api_key}",
+        "YB_SECRET_KEY": "${user_config.yb_secret_key}"
       }
     }
   },
@@ -24,26 +25,40 @@
     "yb_base_url": {
       "type": "string",
       "title": "Server address",
-      "description": "Your Trade Server's full web address, from your broker — include https:// and no trailing slash (e.g. https://your-server.example.com, sometimes with a port like :32236).",
+      "description": "Your Trade Server's full web address, from your broker — include https:// and no trailing slash (e.g. https://your-server.example.com, sometimes with a port). Traders use your trading-server address; managers/brokers use your admin API address.",
       "required": true
     },
     "yb_login": {
       "type": "string",
-      "title": "Account login",
-      "description": "Your trading account login — digits only (a positive integer).",
-      "required": true
+      "title": "Account login (traders)",
+      "description": "Traders only — your trading account login (digits only). Leave blank if you're a manager/broker using an API key.",
+      "required": false
     },
     "yb_password": {
       "type": "string",
-      "title": "Password",
-      "description": "Your account password. Stored securely in your operating system's keychain.",
+      "title": "Password (traders)",
+      "description": "Traders only — your account password. Stored securely in your operating system's keychain. Leave blank if you're using an API key.",
       "sensitive": true,
-      "required": true
+      "required": false
     },
     "yb_broker": {
       "type": "string",
       "title": "Broker name (optional)",
       "description": "Leave blank unless your broker told you to set it.",
+      "required": false
+    },
+    "yb_api_key": {
+      "type": "string",
+      "title": "API key (managers/brokers)",
+      "description": "Managers/brokers only — your API key. Leave blank if you sign in with a login & password.",
+      "sensitive": true,
+      "required": false
+    },
+    "yb_secret_key": {
+      "type": "string",
+      "title": "API secret (managers/brokers)",
+      "description": "Managers/brokers only — your API secret. Leave blank if you sign in with a login & password.",
+      "sensitive": true,
       "required": false
     }
   },

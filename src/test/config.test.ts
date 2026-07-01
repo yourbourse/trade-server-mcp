@@ -171,3 +171,48 @@ test("malformed YB_BASE_URL is rejected with a clear message", () => {
     /must be a valid URL/,
   );
 });
+
+// --- .mcpb dual-mode: the extension omits YB_MODE and injects the literal "${user_config.X}"
+// placeholder for a blank optional field, so the mode is auto-detected from which credentials
+// are actually filled in. These lock the manifest<->config contract (no YB_MODE needed). ---
+const MCPB_BLANK_KEYS = {
+  YB_API_KEY: "${user_config.yb_api_key}",
+  YB_SECRET_KEY: "${user_config.yb_secret_key}",
+};
+const MCPB_BLANK_LOGIN = {
+  YB_LOGIN: "${user_config.yb_login}",
+  YB_PASSWORD: "${user_config.yb_password}",
+  YB_BROKER: "${user_config.yb_broker}",
+};
+
+test(".mcpb trader shape (login/password filled, key/secret blank) infers client login mode", () => {
+  const c = parseConfig({ ...BASE, YB_LOGIN: "100", YB_PASSWORD: "pw", ...MCPB_BLANK_KEYS });
+  assert.equal(c.mode, "client");
+  assert.equal(c.mode === "client" && c.auth.style, "login");
+});
+
+test(".mcpb manager shape (key/secret filled, login/password blank) infers admin mode", () => {
+  const c = parseConfig({ ...BASE, ...MCPB_BLANK_LOGIN, YB_API_KEY: "k", YB_SECRET_KEY: "s" });
+  assert.equal(c.mode, "admin");
+});
+
+test(".mcpb both credential sets filled throws (ambiguous, set either not both)", () => {
+  assert.throws(
+    () =>
+      parseConfig({
+        ...BASE,
+        YB_LOGIN: "100",
+        YB_PASSWORD: "pw",
+        YB_API_KEY: "k",
+        YB_SECRET_KEY: "s",
+      }),
+    /either YB_LOGIN\/YB_PASSWORD or YB_API_KEY\/YB_SECRET_KEY/,
+  );
+});
+
+test(".mcpb all credential fields blank throws the no-mode help", () => {
+  assert.throws(
+    () => parseConfig({ ...BASE, ...MCPB_BLANK_LOGIN, ...MCPB_BLANK_KEYS }),
+    /No mode could be inferred/,
+  );
+});
