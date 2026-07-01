@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-01
+
+### Added
+
+- **Manager/admin support in the one-click Claude Desktop extension (`.mcpb`).** The extension now works for both traders and managers/brokers and auto-detects which API to use from the credentials you enter: a **login + password** connects to the Public (trader) API, and an **API key + secret** connects to the Manager (admin) API — no mode setting required. The API key and secret are stored securely in your operating system's keychain.
+- Documentation for changing your saved extension credentials (for example after a mistyped password).
+
+### Changed
+
+- The Claude Desktop extension's credential form no longer requires a login/password; managers can leave those blank and supply an API key/secret instead.
+
 ## [2.0.4] - 2026-06-30
 
 ### Fixed
@@ -91,7 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial internal release: admin mode with 38 tools — trading, account management, market data with locally computed technical indicators, server configuration — plus 4 MCP resources.
 
-[Unreleased]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.4...HEAD
+[Unreleased]: https://github.com/yourbourse/trade-server-mcp/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.4...v2.1.0
 [2.0.4]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.2...v2.0.3
 [2.0.2]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.1...v2.0.2
