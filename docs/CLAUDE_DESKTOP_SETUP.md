@@ -9,7 +9,7 @@ No coding, and **no prior experience with "MCP" required.**
 
 ## One-click install (Claude Desktop Extension)
 
-The easiest way — **no Node, no git, no config file to edit.** This is for **traders (client mode)**; admins should use the manual setup below.
+The easiest way — **no Node, no git, no config file to edit.** It works for both **traders** (sign in with your **login & password**) and **managers/brokers** (use your **API key & secret**) — the extension detects which API to use from the credentials you enter, so there's no mode to choose.
 
 **First, download the extension.** Go to the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) and download **`trade-server-mcp.mcpb`** from the **Assets** list. ([direct download](https://github.com/yourbourse/trade-server-mcp/releases/latest/download/trade-server-mcp.mcpb)) It saves wherever your browser puts downloads — usually your **Downloads** folder.
 
@@ -35,10 +35,12 @@ Then install it in Claude Desktop:
 
    ![Confirm install dialog](images/mcpb-setup/05-confirm-install.png)
 
-6. Fill in the **Configure** form, then **Save**:
-   - **Server address** — your Trade Server URL from your broker (e.g. `https://your-server.example.com`).
-   - **Account login** and **Password** — from your broker. (Your password is stored in your operating system's keychain, not in a plain file.)
+6. Fill in the **Configure** form, then **Save** — you only need **one** credential set:
+   - **Server address** — your Trade Server URL from your broker (traders: your trading-server address; managers/brokers: your admin API address).
+   - **Traders:** **Account login** and **Password** from your broker. Leave the API key/secret blank.
+   - **Managers/brokers:** **API key** and **API secret**. Leave the login/password blank.
    - **Broker name** — optional; leave it blank unless your broker tells you to set it.
+   - (Your password and API secret are stored in your operating system's keychain, not in a plain file.)
 
    ![Configure the credential fields](images/mcpb-setup/06-configure.png)
 
@@ -48,7 +50,16 @@ Then install it in Claude Desktop:
 
 8. **Check it works.** Start a chat and ask _"run a health check."_ A healthy status means you're connected.
 
-That's it — you can skip the rest of this guide. Everything below is the **manual alternative** (install Node + edit a config file), which also covers **admin mode**.
+### Change your credentials (e.g. after a wrong password)
+
+If sign-in fails because a detail was mistyped, you don't need to reinstall — edit the saved values:
+
+1. Open **Settings → Extensions** and find **trade-server-mcp**.
+2. Click **Configure**, correct the field(s) — for example your **Password**, **API key**, or **API secret** — and **Save**.
+3. **Turn the extension off and back on** (or fully quit and reopen Claude Desktop). This is required — the new values are only picked up when the extension restarts.
+4. Ask Claude to _"run a health check"_ to confirm it connects.
+
+That's it — you can skip the rest of this guide. Everything below is the **manual alternative** (install Node + edit a config file), which some managers may prefer.
 
 ---
 

@@ -32,7 +32,7 @@ You'll be talking to your trading account through your AI assistant in about **1
 
 <br>
 
-For traders (client mode) — no Node, git, or config file needed.
+For traders **and** managers/brokers — no Node, git, or config file needed. The extension auto-detects your mode from the credentials you enter: **login + password → trader (Public API)**, **API key + secret → manager (Admin API)**.
 
 **Download** `trade-server-mcp.mcpb` from the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) (under **Assets**), then in Claude Desktop:
 
@@ -56,7 +56,7 @@ For traders (client mode) — no Node, git, or config file needed.
 
    ![Confirm install](docs/images/mcpb-setup/05-confirm-install.png)
 
-6. Fill the **Configure** form (server address, login, password, optional broker) → **Save**
+6. Fill the **Configure** form → **Save** — traders enter **login + password**; managers/brokers enter an **API key + secret** (fill only one set; server address + optional broker apply either way)
 
    ![Configure fields](docs/images/mcpb-setup/06-configure.png)
 

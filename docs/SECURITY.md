@@ -53,7 +53,12 @@ same care as the credentials themselves.
 - Don't paste your config file (or startup logs containing your server URL) into chats,
   issues, or screenshots without redacting it.
 - If you believe a credential has leaked, ask your broker to rotate it (token pair or
-  admin keys) or change your account password, then update the config file.
+  admin keys) or change your account password, then update your stored credentials: for the
+  npx/manual setups, edit the values in your MCP client's config file and restart it; for the
+  one-click Claude Desktop extension there is no config file — the values live in your OS
+  keychain, so edit them via **Settings → Extensions → trade-server-mcp → Configure** and
+  re-enable the extension (see
+  [Change your credentials](./CLAUDE_DESKTOP_SETUP.md#change-your-credentials-eg-after-a-wrong-password)).
 
 ## Recommendations
 
