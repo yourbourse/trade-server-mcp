@@ -200,3 +200,34 @@ test("subscribe recovers a missing api key via handleUnauthorized before sending
   assert.equal(JSON.parse(sockets[0].sent[0]).h["X-YB-API-Key"], "recovered-token");
   client.disconnect();
 });
+
+test("subscribe still sends the frame when handleUnauthorized throws", async () => {
+  const provider = {
+    getApiKey: () => "",
+    getSigningSecret: () => "",
+    handleUnauthorized: async () => {
+      throw new Error("renewal exploded");
+    },
+  };
+  const sockets: FakeSocket[] = [];
+  const factory = (_url: string) => {
+    const s = new FakeSocket();
+    sockets.push(s);
+    return s as unknown as import("ws").WebSocket;
+  };
+  const client = new WsClient("https://ts.local", provider, factory);
+  activeClients.push(client);
+  const connecting = client.connect();
+  sockets[0].emit("open");
+  await connecting;
+
+  const p = client.subscribe("L1", { s: "EURUSD" }, "r1");
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(sockets[0].sent.length, 1, "the subscribe frame must still be sent");
+  sockets[0].emit(
+    "message",
+    JSON.stringify({ m: "subscribe", s: false, reqId: "r1", e: { msg: "unauthorized" } }),
+  );
+  await assert.rejects(() => p, /unauthorized/i);
+  client.disconnect();
+});
