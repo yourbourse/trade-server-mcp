@@ -7,28 +7,29 @@ const manifest = JSON.parse(readFileSync(new URL("../../manifest.json", import.m
 const env = manifest.server.mcp_config.env;
 const uc = manifest.user_config;
 
-test("manifest does not hard-pin YB_MODE (mode auto-detected from credentials)", () => {
+test("manifest does not hard-pin YB_MODE (role auto-detected after sign-in)", () => {
   assert.equal(env.YB_MODE, undefined);
 });
 
-test("manifest maps the API key/secret env vars for manager (admin) mode", () => {
-  assert.equal(env.YB_API_KEY, "${user_config.yb_api_key}");
-  assert.equal(env.YB_SECRET_KEY, "${user_config.yb_secret_key}");
-});
-
-test("manifest still maps the trader (client) login env vars", () => {
+test("manifest still maps the login env vars", () => {
   assert.equal(env.YB_LOGIN, "${user_config.yb_login}");
   assert.equal(env.YB_PASSWORD, "${user_config.yb_password}");
 });
 
-test("API key and secret fields are sensitive and optional", () => {
-  assert.equal(uc.yb_api_key.sensitive, true);
-  assert.equal(uc.yb_api_key.required ?? false, false);
-  assert.equal(uc.yb_secret_key.sensitive, true);
-  assert.equal(uc.yb_secret_key.required ?? false, false);
+test("manifest does not expose API key/secret — one credential story (login/password)", () => {
+  assert.equal(env.YB_API_KEY, undefined);
+  assert.equal(env.YB_SECRET_KEY, undefined);
+  assert.equal(uc.yb_api_key, undefined);
+  assert.equal(uc.yb_secret_key, undefined);
 });
 
-test("login and password are optional so a manager can leave them blank", () => {
-  assert.equal(uc.yb_login.required ?? false, false);
-  assert.equal(uc.yb_password.required ?? false, false);
+test("login and password are required (used by traders AND managers)", () => {
+  assert.equal(uc.yb_login.required, true);
+  assert.equal(uc.yb_password.required, true);
+  assert.equal(uc.yb_password.sensitive, true);
+});
+
+test("server address description leads with an example URL and tells managers which address", () => {
+  assert.match(uc.yb_base_url.description, /^https:\/\/your-server\.example\.com/);
+  assert.match(uc.yb_base_url.description, /[Mm]anagers/);
 });
