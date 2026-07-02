@@ -9,7 +9,7 @@ security issue.
 
 These are properties of the code, not aspirations:
 
-- **Your password is never transmitted.** In client login mode, `YB_PASSWORD` is used
+- **Your password is never transmitted.** In login/password mode (trader or manager), `YB_PASSWORD` is used
   only as the local HMAC signing secret for the sign-in request (see
   [Authentication](./AUTHENTICATION.md)). The password itself never appears in any request
   body, header, or URL.
@@ -55,8 +55,9 @@ same care as the credentials themselves.
 - If you believe a credential has leaked, ask your broker to rotate it (token pair or
   admin keys) or change your account password, then update your stored credentials: for the
   npx/manual setups, edit the values in your MCP client's config file and restart it; for the
-  one-click Claude Desktop extension there is no config file — the values live in your OS
-  keychain, so edit them via **Settings → Extensions → trade-server-mcp → Configure** and
+  one-click Claude Desktop extension there is no config file — as of 2.2.0 the form holds only
+  your login, password, and server address, stored in your OS keychain — edit them via
+  **Settings → Extensions → trade-server-mcp → Configure** and
   re-enable the extension (see
   [Change your credentials](./CLAUDE_DESKTOP_SETUP.md#change-your-credentials-eg-after-a-wrong-password)).
 
@@ -80,6 +81,8 @@ same care as the credentials themselves.
   rule.
 - Reserve admin-mode use for operators who genuinely need server-wide tooling, and rotate
   admin key pairs when staff or usage changes.
+- Manager login/password sessions hold only an in-memory, auto-refreshing session token —
+  an alternative to long-lived static admin keys.
 
 ## Supply-chain stance
 

@@ -1,7 +1,7 @@
 # Authentication
 
 This is the deep-dive into how the Trade Server MCP authenticates with your YourBourse
-Trade Server: how requests are signed, how each of the three credential setups works, and
+Trade Server: how requests are signed, how each of the four credential setups works, and
 exactly what happens on timeouts, expired sessions, and dropped connections.
 
 You don't need any of this to use the server — credential setup is covered in
@@ -77,7 +77,7 @@ In short: **GET requests carry only the API key; writes carry all three headers.
 are authenticated by the key alone, while anything that can change state must also prove
 possession of the signing secret and carry a fresh timestamp.
 
-## The three credential flows
+## The four credential flows
 
 ### Admin mode: static key pair
 
@@ -86,7 +86,8 @@ directly for the lifetime of the process:
 
 - `X-YB-API-Key` is always the configured API key.
 - Writes are signed with the configured secret key as the HMAC secret.
-- There is no sign-in step, no session token, and no refresh cycle. Nothing expires.
+- Admin with an API key pair has no sign-in step, no session token, and no refresh cycle —
+  nothing expires. (Admin via manager login signs in like a client — see below.)
 
 The secret key never leaves your machine — it is only used locally to compute signatures.
 
@@ -147,6 +148,16 @@ Step by step:
 
 A malformed sign-in response (missing token, signing token, or expiration) is rejected
 outright rather than half-applied, so the session is never left in a partial state.
+
+### Admin mode, manager sign-in (login/password)
+
+A manager signing in with `YB_LOGIN` + `YB_PASSWORD` uses **exactly the client login flow
+above**, pointed at the admin API origin: the same `POST /authorize` signed with the
+password, the same session token pair, and the same background auto-refresh, single-flight
+de-duplication, and 401 recovery. The only difference is what the resulting session token
+authorizes — the admin API surface instead of a single trading account. This is also the
+flow auto-detection uses before probing the account's role (see
+[Architecture → Mode selection](./ARCHITECTURE.md#mode-selection)).
 
 ### Client mode, token pair
 

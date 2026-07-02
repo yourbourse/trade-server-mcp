@@ -53,6 +53,9 @@ your broker:
 > **Broker administrator?** Use `YB_MODE` = `admin` with `YB_API_KEY` + `YB_SECRET_KEY` instead of
 > login/password. Issued an API **token pair** instead of a password? See
 > [Getting an API token pair](./CONFIGURATION.md#getting-an-api-token-pair).
+>
+> `YB_MODE` is optional since 2.2.0 — omit it and your role is detected automatically; managers
+> can use login/password instead of a key pair.
 
 **⚠️ Working directory — this must be filled in with a folder that exists on your computer.** Do
 **not** leave the `~/code` placeholder: if that folder doesn't exist, the server can fail to launch

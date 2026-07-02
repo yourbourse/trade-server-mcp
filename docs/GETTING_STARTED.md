@@ -16,8 +16,9 @@ This guide takes you from a fresh machine to your first successful tool call.
   [Choose your mode](#choose-your-mode) below for which credentials you need).
 
 > **Port note:** the client (public) API and the admin API are served on **different ports**
-> of the same Trade Server — use the client port for client mode and the admin port for admin
-> mode; your broker or server operator tells you which is which.
+> of the same Trade Server — traders use the client port, managers use the admin port (the
+> auto-detected role follows the address); your broker or server operator tells you which is
+> which.
 >
 > **Server version note:** trader (client) mode uses the server's public client API. If
 > sign-in is rejected even though your credentials are correct, first check you are using the
@@ -56,11 +57,16 @@ To verify a local build, you can run the test suite with `npm test`.
 
 ## Choose your mode
 
-The server runs in one of two modes, matching two kinds of users:
+**You usually don't choose.** Sign in with your login and password (no `YB_MODE`) and the
+server detects your role at startup — a manager gets the admin tool set, a trader gets the
+client tool set. Set `YB_MODE` only to pin a mode explicitly and skip detection. The two
+modes, matching two kinds of users:
 
 **Broker administrator (admin mode).** You operate the Trade Server itself: you can see and
 manage every account, review and edit order routing, transfer cash, inspect liquidity
-connectors, and use the full market-data toolset — 42 tools with server-wide scope. You need an
+connectors, and use the full market-data toolset — 42 tools with server-wide scope. You need
+either your **manager login and password** (`YB_LOGIN` + `YB_PASSWORD` — auto-detected, with
+an auto-refreshing session) or an
 **admin API key pair** (`YB_API_KEY` + `YB_SECRET_KEY`), which comes from your YourBourse server
 administration setup. If you manage the server, you (or your team) issue these keys.
 
@@ -78,22 +84,27 @@ For a deeper look at each persona, see [Admin Mode](./ADMIN_MODE.md) and
 
 1. **Add the server to your MCP client's configuration** with the environment variables for
    your mode. [Configuration](./CONFIGURATION.md) has complete copy-paste examples for Claude
-   Desktop, Claude Code, and generic MCP clients, for all three credential setups — use the
+   Desktop, Claude Code, and generic MCP clients, for all four credential setups — use the
    npx one-liner (Option A), or your local `dist/index.js` path if you cloned and built the
    repo (Option B).
 
 2. **Restart your MCP client** (for Claude Desktop, fully quit and reopen the app) so it picks
    up the new server.
 
-3. **Check the startup line.** The server logs to stderr on startup. In client mode with
-   login/password you should see:
+3. **Check the startup line.** The server logs to stderr on startup. With login/password and
+   no `YB_MODE` (auto-detected role) you should see one of:
 
    ```
-   Trade Server MCP: client mode, signed in as account <login>
+   Trade Server MCP: auto-detected trader account <login> — client mode
    ```
 
-   followed by `Trade Server MCP running on stdio`. Admin mode logs
-   `Trade Server MCP: admin mode (server-wide tools)` instead. The full set of startup lines
+   ```
+   Trade Server MCP: auto-detected manager account <login> — admin mode (server-wide tools)
+   ```
+
+   followed by `Trade Server MCP running on stdio`. Explicit `YB_MODE=client` logs
+   `Trade Server MCP: client mode, signed in as account <login>` instead, and key-pair admin
+   mode logs `Trade Server MCP: admin mode (server-wide tools)`. The full set of startup lines
    (including what a failed sign-in looks like) is listed in
    [Configuration](./CONFIGURATION.md#startup-log-lines).
 

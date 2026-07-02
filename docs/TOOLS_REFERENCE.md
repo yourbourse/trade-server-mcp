@@ -573,7 +573,7 @@ Example:
 
 #### `health_check`
 
-> Check the Trade Server is running and responsive. Returns current server time.
+> Check the Trade Server is running and responsive. Returns current server time, which mode this server runs in (trader/client vs manager/admin) and, when signed in with a login/password, the account number.
 
 No parameters.
 
@@ -582,6 +582,19 @@ Example:
 ```json
 {}
 ```
+
+Example response:
+
+```json
+{
+  "now": "2026-07-02T14:25:12.610779+00:00",
+  "version": "25.1.167",
+  "mode": "client",
+  "account": 12345
+}
+```
+
+`account` appears only for login/password sign-ins; static key/token setups report mode only.
 
 ### Resources (client mode)
 
@@ -1380,7 +1393,7 @@ Example:
 
 #### `health_check`
 
-> Check if Trade Server is running and responsive. Returns current server time. Use to verify connectivity before other operations.
+> Check if Trade Server is running and responsive. Returns current server time, which mode this server runs in (manager/admin) and, when signed in with a manager login/password, the account number. Use to verify connectivity before other operations.
 
 No parameters.
 
@@ -1389,6 +1402,19 @@ Example:
 ```json
 {}
 ```
+
+Example response (manager login/password sign-in):
+
+```json
+{
+  "now": "2026-07-02T14:25:12.610779+00:00",
+  "version": "25.1.167",
+  "mode": "admin",
+  "account": 1
+}
+```
+
+`account` appears only for login/password sign-ins; static key/token setups report mode only.
 
 ### Resources (admin mode)
 

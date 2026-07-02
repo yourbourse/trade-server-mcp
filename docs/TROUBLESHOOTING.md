@@ -10,7 +10,9 @@ output, so if you are not sure what is happening, start with
 | What you are seeing | Go to |
 |---|---|
 | The server never appears in your MCP client, or shows as failed/disconnected | [The server won't start](#the-server-wont-start-configuration-errors) |
-| Log shows `sign-in FAILED` at startup | [Sign-in fails in client mode](#sign-in-fails-in-client-mode-loginpassword) |
+| Log shows `sign-in FAILED` at startup (client, auto-detect, or admin variants) | [Sign-in fails in client mode](#sign-in-fails-in-client-mode-loginpassword) |
+| You're a manager but only see trader tools | [Auto-detection and manager mode](#auto-detection-and-manager-mode) |
+| `get_quote` / `get_market_depth` fail or return empty in manager mode | [Auto-detection and manager mode](#auto-detection-and-manager-mode) |
 | Sign-in fails with HTTP 400 or 404 (invalid parameter) | [Sign-in rejected with HTTP 400/404](#sign-in-rejected-with-http-400-or-404-invalid-parameter) |
 | Tool calls fail with connection drops (`fetch failed`, `socket hang up`, `ECONNRESET`) | [Older Trade Server versions](#older-trade-server-versions-server-compatibility) |
 | Every tool error ends with the same extra hint line | [Tool errors carry a sign-in hint](#tool-errors-carry-a-sign-in-hint) |
@@ -58,10 +60,20 @@ After fixing the configuration, restart your MCP client so it relaunches the ser
 
 ## Sign-in fails in client mode (login/password)
 
-**Symptom:** the startup log shows
+**Symptom:** the startup log shows one of these lines, depending on your setup (explicit
+`YB_MODE=client`, no `YB_MODE` at all — auto-detection — or `YB_MODE=admin` with a manager
+login):
 
 ```
 Trade Server MCP: client mode — sign-in FAILED. <hint> Tools are registered; calls will retry sign-in.
+```
+
+```
+Trade Server MCP: auto-detect — sign-in FAILED → client mode. <hint> Tools are registered; calls will retry sign-in. If this account is a manager, fix the credentials and restart — the role is detected only at startup.
+```
+
+```
+Trade Server MCP: admin mode — sign-in FAILED. <hint> Tools are registered; calls will retry sign-in.
 ```
 
 This is not fatal: the server starts anyway, registers all tools, and retries the sign-in on
@@ -70,11 +82,11 @@ each tool call. The `<hint>` is a targeted diagnosis. There are four possible hi
 | Hint (exact text) | Meaning | What to do |
 |---|---|---|
 | `Sign-in to the Trade Server failed: check YB_LOGIN and YB_PASSWORD.` | The server answered 401 or 403: it understood the request but rejected the credentials. | Verify your account number and password (the sign-in request is signed with your password — a wrong password makes the signature invalid). If your server hosts more than one broker, you may also need `YB_BROKER` — ask your broker. |
-| `Sign-in was rejected by the Trade Server (HTTP <status>) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to the client (public) API (it can use a different port from the admin API), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for the client API on this server, or the server version may predate it — check with your broker.` | The server answered 400 or 404: it did not accept the sign-in request at all (an invalid parameter or wrong endpoint). | See [Sign-in rejected with HTTP 400/404](#sign-in-rejected-with-http-400-or-404-invalid-parameter) below. |
+| `Sign-in was rejected by the Trade Server (HTTP <status>) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to your Trade Server's API address (traders: the client/public API; managers: the admin API — they can differ in port), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for this API on this server, or the server version may predate it — check with your broker.` | The server answered 400 or 404: it did not accept the sign-in request at all (an invalid parameter or wrong endpoint). | See [Sign-in rejected with HTTP 400/404](#sign-in-rejected-with-http-400-or-404-invalid-parameter) below. |
 | `Could not reach the Trade Server: check YB_BASE_URL and network connectivity.` | No HTTP response at all — wrong URL or port, DNS failure, firewall, VPN, or the sign-in timed out (10 seconds). | Confirm `YB_BASE_URL` (scheme, host, and port) with your broker, then check basic connectivity to that host from your machine. |
 | `Sign-in to the Trade Server failed (HTTP <status>).` | Any other HTTP status (for example a 5xx server error). | Check the full log line for the response body, and contact your broker if it persists. |
 
-> **Using the one-click `.mcpb` extension?** To fix a mistyped login, password, API key, or API secret, edit the saved values via **Settings → Extensions → trade-server-mcp → Configure**, then turn the extension off and back on — see [Change your credentials](./CLAUDE_DESKTOP_SETUP.md#change-your-credentials-eg-after-a-wrong-password) in the Claude Desktop guide.
+> **Using the one-click `.mcpb` extension?** To fix a mistyped login, password, or server address, edit the saved values via **Settings → Extensions → trade-server-mcp → Configure**, then turn the extension off and back on — see [Change your credentials](./CLAUDE_DESKTOP_SETUP.md#change-your-credentials-eg-after-a-wrong-password) in the Claude Desktop guide.
 
 The log also contains the raw failure line, e.g.
 `POST /authorize failed (401): <response body>`, which includes the server's error body —
@@ -100,12 +112,24 @@ request itself — an **invalid parameter** or wrong endpoint. Check these, in o
    `YB_BROKER` **unset** unless your broker told you to set it. (An empty or
    placeholder-only value is treated as unset, so a blank optional field is safe.)
 2. **Wrong port.** The client (public) API and the admin API are served on **different ports
-   of the same Trade Server**. If `YB_BASE_URL` points at the admin port, trading-account
-   sign-ins are rejected with 400 even on a perfectly current server. Ask your broker for the
-   **client** API port and fix it in `YB_BASE_URL`.
+   of the same Trade Server**. If `YB_BASE_URL` points at the wrong one for your role,
+   sign-ins can be rejected with 400 even on a perfectly current server. Ask your broker for
+   the right port — traders need the **client** API port, managers the **admin** API port —
+   and fix it in `YB_BASE_URL`.
 3. **Older server version.** If the configuration is confirmed correct and sign-in is still
    rejected, the server version may predate the public client API — see
    [Older Trade Server versions](#older-trade-server-versions-server-compatibility) below.
+
+## Auto-detection and manager mode
+
+With login/password credentials and no `YB_MODE`, the server detects your role at startup —
+manager → admin tools, trader → client tools. Detection is fail-closed: if it cannot confirm a
+manager, it starts in client mode. Two symptoms specific to this:
+
+| Symptom | Likely cause | What to do |
+|---|---|---|
+| I'm a manager but only see trader tools | Auto-detection could not confirm the manager role (fail-closed) | Run `health_check` — it reports the detected mode. Check the server address is your **admin** address and the password is right, then restart the extension (the role is detected only at startup). npx/manual: set `YB_MODE=admin` to force. |
+| `get_quote` / `get_market_depth` return empty or "Subscription failed" in manager mode | The server's WebSocket may not accept login-session sign-ins | Use an admin API key pair (`YB_MODE=admin` + `YB_API_KEY`/`YB_SECRET_KEY`, npx/manual) for market-data-heavy admin use, and report the server version to your broker. |
 
 ## Older Trade Server versions (server compatibility)
 
@@ -117,7 +141,7 @@ genuinely older builds, incompatibility shows up in two distinct ways:
 - **Sign-in fails with HTTP 400** (server error code 3) at the correct client port with the
   configuration confirmed, and the hint reads:
 
-  > Sign-in was rejected by the Trade Server (HTTP 400) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to the client (public) API (it can use a different port from the admin API), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for the client API on this server, or the server version may predate it — check with your broker.
+  > Sign-in was rejected by the Trade Server (HTTP 400) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to your Trade Server's API address (traders: the client/public API; managers: the admin API — they can differ in port), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for this API on this server, or the server version may predate it — check with your broker.
 
 - **`get_balances` and `get_limits` drop the connection.** Sign-in may succeed and
   everything else works — but these two tools fail with transport-level errors such as

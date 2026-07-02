@@ -9,7 +9,9 @@ No coding, and **no prior experience with "MCP" required.**
 
 ## One-click install (Claude Desktop Extension)
 
-The easiest way — **no Node, no git, no config file to edit.** It works for both **traders** (sign in with your **login & password**) and **managers/brokers** (use your **API key & secret**) — the extension detects which API to use from the credentials you enter, so there's no mode to choose.
+The easiest way — **no Node, no git, no config file to edit.**
+
+> **Trader or manager — same setup.** Enter your server address, account login, and password; the extension signs in and detects your role automatically (traders get trading tools, managers get admin tools). **Managers: enter your admin API address as the server address** — role detection needs it. Ask "run a health check" to see which role it picked.
 
 **First, download the extension.** Go to the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) and download **`trade-server-mcp.mcpb`** from the **Assets** list. ([direct download](https://github.com/yourbourse/trade-server-mcp/releases/latest/download/trade-server-mcp.mcpb)) It saves wherever your browser puts downloads — usually your **Downloads** folder.
 
@@ -27,7 +29,7 @@ Then install it in Claude Desktop:
 
    ![Choose the .mcpb file](images/mcpb-setup/03-choose-file.png)
 
-4. Review the extension — it should show a **version number** (**2.1.0** or later; manager mode needs 2.1.0+) and **"All requirements met"** — then click **Install**.
+4. Review the extension — it should show a **version number** (**2.2.0** or later; manager support and auto-detection need 2.2.0+) and **"All requirements met"** — then click **Install**.
 
    ![Extension preview with Install button](images/mcpb-setup/04-preview-install.png)
 
@@ -35,12 +37,12 @@ Then install it in Claude Desktop:
 
    ![Confirm install dialog](images/mcpb-setup/05-confirm-install.png)
 
-6. Fill in the **Configure** form, then **Save** — you only need **one** credential set:
+6. Fill in the **Configure** form, then **Save**:
    - **Server address** — your Trade Server URL from your broker (traders: your trading-server address; managers/brokers: your admin API address).
-   - **Traders:** **Account login** and **Password** from your broker. Leave the API key/secret blank.
-   - **Managers/brokers:** **API key** and **API secret**. Leave the login/password blank.
+   - **Account login** — your account number from your broker, digits only. Works for traders and managers — your role is detected automatically when the extension signs in.
+   - **Password** — from your broker.
    - **Broker name** — optional; leave it blank unless your broker tells you to set it.
-   - (Your password and API secret are stored in your operating system's keychain, not in a plain file.)
+   - (Your password is stored in your operating system's keychain, not in a plain file.)
 
    ![Configure the credential fields](images/mcpb-setup/06-configure.png)
 
@@ -55,7 +57,7 @@ Then install it in Claude Desktop:
 If sign-in fails because a detail was mistyped, you don't need to reinstall — edit the saved values:
 
 1. Open **Settings → Extensions** and find **trade-server-mcp**.
-2. Click **Configure**, correct the field(s) — for example your **Password**, **API key**, or **API secret** — and **Save**.
+2. Click **Configure**, correct the field(s) — for example your **Password** or the **server address** — and **Save**.
 3. **Turn the extension off and back on** (or fully quit and reopen Claude Desktop). This is required — the new values are only picked up when the extension restarts.
 4. Ask Claude to _"run a health check"_ to confirm it connects.
 
@@ -200,7 +202,7 @@ Then fill in the three placeholders with the details from your broker:
 | `<your-login>` | Your account login | Keep the quotes, e.g. `"12345"`. |
 | `<your-password>` | Your password | Keep the quotes. |
 
-Leave `"YB_MODE": "client"` exactly as it is — that's what makes this *your* trading account.
+Leaving `"YB_MODE": "client"` pins trader mode and skips auto-detection; omit it to let the server detect your role automatically.
 
 ![The filled-in configuration](images/claude-desktop-setup/09-config-file-pasted.png)
 
@@ -289,5 +291,6 @@ More help: see [Troubleshooting](./TROUBLESHOOTING.md).
 - [Usage Examples](./USAGE_EXAMPLES.md) — realistic conversations and what they do.
 - [Client Mode](./CLIENT_MODE.md) — everything a trader can do, and what's deliberately off-limits.
 
-> **Running the server as a broker, not a trader?** You'll use admin credentials instead — see
+> **Running the server as a broker/manager, not a trader?** Your manager login + password works the
+> same way — or use an admin API key pair (see [Configuration](./CONFIGURATION.md)). Details in
 > [Admin Mode](./ADMIN_MODE.md).

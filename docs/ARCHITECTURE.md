@@ -70,9 +70,10 @@ Everything under `src/`:
 | `register-client.ts` | Registers the 30 client tools and 1 MCP resource; exports `CLIENT_TOOL_COUNT`; wraps every tool so sign-in failure hints surface in tool errors. |
 | `tool-handler.ts` | Wraps each tool function for MCP: serializes results to JSON text, converts thrown errors into a structured `{ error, message }` result with `isError: true`. |
 | `rest-client.ts` | Signed REST client for `/api/v1`: header construction, HMAC signing, ETag caching (`If-None-Match` / `If-Match`), semantic error mapping (`ApiError`), 401 renew-and-retry (`withAuthRetry`), and the transport retry policy. |
-| `ws-client.ts` | WebSocket client for `/ws/v1` (admin mode only): live quotes (L1) and market depth (L2), ping/pong keepalive, bounded reconnect. |
+| `ws-client.ts` | WebSocket client for `/ws/v1` (admin mode only): live quotes (L1) and market depth (L2), ping/pong keepalive, bounded reconnect. Takes a `CredentialsProvider` and reads the current API key at send time. |
 | `auth/admin-auth.ts` | `generateSignature` (HMAC-SHA256, base64url), the `CredentialsProvider` interface, and `StaticCredentials` for static key pairs. |
 | `auth/client-auth.ts` | `ClientAuth`: login-based sign-in via `POST /authorize`, token rotation via `/refresh`, auto-refresh scheduling at 80% of token lifetime (single-flight), 401 recovery hook, and targeted sign-in failure hints. |
+| `auth/detect-mode.ts` | `detectManager`: the startup role probe for login/password sign-ins — calls `GET /admin/managers/get/{account}`; 200 means manager (admin tools), any failure means trader (fail-closed to client mode). |
 | `tools/admin/trading.ts` | Admin trading tools: order placement/modification/cancel, positions, close composites, history, account summary. The four money-movers (place order, close position, close-by, close all) are exposed as `*_plan` + `*_commit` pairs (confirm-before-execute). |
 | `tools/admin/account.ts` | Admin account tools: account state/info, all accounts, cash transfers, transfer history, balances. |
 | `tools/admin/market-data.ts` | Admin market data: WS quotes and depth, symbols, candles, conversion rate, locally computed indicators, health check. |
@@ -98,22 +99,38 @@ annotations — plan tools are marked `readOnlyHint` (they only preview), commit
 
 `config.ts` resolves the mode at startup, before anything connects:
 
-1. **Explicit wins.** If `YB_MODE` is set (`admin` or `client`), that's the mode. Any other
-   value is a startup error.
-2. **Otherwise, infer from credentials.** Login-style variables (`YB_LOGIN` / `YB_PASSWORD`)
-   imply client mode; key-style variables (`YB_API_KEY` / `YB_SECRET_KEY`) imply admin mode.
-3. **No credentials at all** is a startup error with a help text listing the valid
+1. **Explicit wins.** If `YB_MODE` is set (`admin` or `client`), that's the mode and no
+   role detection runs. Any other value is a startup error.
+2. **Login/password means auto-detection.** Login-style variables (`YB_LOGIN` /
+   `YB_PASSWORD`) without `YB_MODE` resolve to **auto** mode: the server signs in
+   (`/authorize`), then probes the admin `getManager` endpoint to learn the account's role —
+   a manager gets the admin tool set, a trader the client tool set. Detection is
+   **fail-closed**: any probe failure (HTTP error, network drop, timeout) yields client
+   mode, never admin.
+3. **Key pair means admin.** Key-style variables (`YB_API_KEY` / `YB_SECRET_KEY`) without
+   `YB_MODE` imply admin mode.
+4. **No credentials at all** is a startup error with a help text listing the valid
    combinations.
 
-Within client mode there are two credential styles: **login** (`YB_LOGIN` + `YB_PASSWORD`,
-optional `YB_BROKER`) and **token** (`YB_API_KEY` + `YB_SECRET_KEY` with `YB_MODE=client`).
-Mixing both styles in client mode is rejected at startup. All values are whitespace-trimmed,
-and an empty string counts as unset. The full variable reference and every error message are in
+Admin mode accepts either credential style: a static **key pair**, or a **manager session**
+(`YB_LOGIN` + `YB_PASSWORD` — the same auto-refreshing sign-in flow traders use). Within
+client mode there are two credential styles: **login** (`YB_LOGIN` + `YB_PASSWORD`, optional
+`YB_BROKER`) and **token** (`YB_API_KEY` + `YB_SECRET_KEY` with `YB_MODE=client`). Mixing
+both credential styles is rejected at startup. All values are whitespace-trimmed, and an
+empty string counts as unset. The full variable reference and every error message are in
 [Configuration](./CONFIGURATION.md).
 
 `index.ts` then builds the matching wiring:
 
-- **Admin:** `StaticCredentials` + `RestClient` + `WsClient`, then `registerAdminTools`.
+- **Admin, key pair:** `StaticCredentials` + `RestClient` + `WsClient`, then `registerAdminTools`.
+- **Admin, manager session:** `ClientAuth` signs in immediately (auto-refreshing session
+  token) and backs both `RestClient` and `WsClient`; if sign-in fails, the admin tools are
+  registered anyway and each call retries sign-in.
+- **Auto (login/password, no `YB_MODE`):** `ClientAuth` signs in, then `detectManager` probes
+  `GET /admin/managers/get/{account}` through a retry-free facade provider — capped at
+  5 seconds, and deliberately without the 401-renewal hook, so a rejected probe resolves to
+  "trader" instead of triggering a re-authorize loop. A 200 selects the admin wiring above;
+  anything else selects the client wiring below.
 - **Client, login style:** `ClientAuth` signs in immediately; if sign-in fails, tools are
   registered anyway and every call carries a targeted failure hint until sign-in succeeds.
 - **Client, token style:** `StaticCredentials` + `RestClient` — no timers, no sign-in step.

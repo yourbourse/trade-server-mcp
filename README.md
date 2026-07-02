@@ -32,7 +32,7 @@ You'll be talking to your trading account through your AI assistant in about **1
 
 <br>
 
-For traders **and** managers/brokers — no Node, git, or config file needed. The extension auto-detects your mode from the credentials you enter: **login + password → trader (Public API)**, **API key + secret → manager (Admin API)**.
+For traders **and** managers/brokers — no Node, git, or config file needed. One form (login + password); the extension detects your role automatically when it signs in. **Managers: use your admin API address.**
 
 **Download** `trade-server-mcp.mcpb` from the [latest release](https://github.com/yourbourse/trade-server-mcp/releases/latest) (under **Assets**), then in Claude Desktop:
 
@@ -48,7 +48,7 @@ For traders **and** managers/brokers — no Node, git, or config file needed. Th
 
    ![Choose the .mcpb file](docs/images/mcpb-setup/03-choose-file.png)
 
-4. Review (**Version 2.1.0** or later — manager mode needs 2.1.0+ — and "All requirements met") → **Install**
+4. Review (**Version 2.2.0** or later — manager support and auto-detection need 2.2.0+ — and "All requirements met") → **Install**
 
    ![Extension preview](docs/images/mcpb-setup/04-preview-install.png)
 
@@ -56,7 +56,7 @@ For traders **and** managers/brokers — no Node, git, or config file needed. Th
 
    ![Confirm install](docs/images/mcpb-setup/05-confirm-install.png)
 
-6. Fill the **Configure** form → **Save** — traders enter **login + password**; managers/brokers enter an **API key + secret** (fill only one set; server address + optional broker apply either way)
+6. Fill the **Configure** form (server address, login, password, optional broker) → **Save**
 
    ![Configure fields](docs/images/mcpb-setup/06-configure.png)
 
@@ -164,7 +164,8 @@ Full guide: **[Codex setup](docs/CODEX_SETUP.md)**.
 | **VS Code (GitHub Copilot)** | [VS Code setup](docs/VSCODE_SETUP.md) |
 | **Claude Code (CLI)** | one command — see [Configuration](docs/CONFIGURATION.md#configuration-examples) |
 
-> **Broker administrator?** Use `YB_MODE=admin` with your `YB_API_KEY` + `YB_SECRET_KEY` — see
+> **Broker administrator?** Sign in with your manager login + password (your role is detected
+> automatically), or use `YB_MODE=admin` with an API key pair — see
 > [Admin Mode](docs/ADMIN_MODE.md). &nbsp;·&nbsp; Issued an API **token pair** instead of a password?
 > See [Getting an API token pair](docs/CONFIGURATION.md#getting-an-api-token-pair).
 
@@ -174,7 +175,7 @@ Full guide: **[Codex setup](docs/CODEX_SETUP.md)**.
 
 | Feature | Description |
 |---------|-------------|
-| **Two modes, one server** | **Client mode** for traders (scoped to your own account) and **admin mode** for broker operations (server-wide) — selected by the credentials you configure |
+| **Two modes, one server** | **Client mode** for traders (scoped to your own account) and **admin mode** for broker operations (server-wide) — detected from your sign-in (or pinned with `YB_MODE`) |
 | **30 trader tools / 42 broker tools** | Task-shaped tools covering trading, account monitoring, market data, and (admin) server configuration, plus MCP resources for static context |
 | **Live trading** | Market, Limit, Stop, StopLimit, and CloseBy orders with optional SL/TP; modify, cancel, partial close, flatten-everything composites |
 | **Account monitoring** | Balance, equity, margin, unrealized P/L, open positions, working orders, trade and transfer history — single calls or one-shot summaries |
@@ -194,7 +195,7 @@ One process runs exactly one mode — the tool set is decided at startup from yo
 | **Who it's for** | A trader with an account at a broker running a YourBourse Trade Server | The broker: operations and administration teams |
 | **Scope** | Your own account only — the session token *is* the scope, enforced by the server | Server-wide: every account, group, client, routing rule, and liquidity connector |
 | **Tools / resources** | 30 tools, 1 resource | 42 tools, 4 resources |
-| **Credentials** | `YB_LOGIN` + `YB_PASSWORD` (or a pre-issued token pair) | `YB_API_KEY` + `YB_SECRET_KEY` from the server admin panel |
+| **Credentials** | `YB_LOGIN` + `YB_PASSWORD` (or a pre-issued token pair) | Manager `YB_LOGIN` + `YB_PASSWORD`, or `YB_API_KEY` + `YB_SECRET_KEY` from the server admin panel |
 | **Trading** | On your account; no account parameter exists | On behalf of any account via `accountId` |
 | **Extras** | Rate-limit visibility, scoped balances | Cash transfers, order routing management, indicators, L1/L2 over WebSocket |
 
@@ -228,7 +229,7 @@ Full guides: [Client Mode](docs/CLIENT_MODE.md) · [Admin Mode](docs/ADMIN_MODE.
 | Document | Description |
 |----------|-------------|
 | [Architecture](docs/ARCHITECTURE.md) | Components, module map, mode selection, and the life of a tool call |
-| [Authentication](docs/AUTHENTICATION.md) | HMAC-SHA256 signing, the three credential setups, token refresh, and failure handling |
+| [Authentication](docs/AUTHENTICATION.md) | HMAC-SHA256 signing, the four credential setups, token refresh, and failure handling |
 | [Security](docs/SECURITY.md) | Credential-handling guarantees, config-file hygiene, supply-chain stance, reporting |
 
 ### Help & Contributing

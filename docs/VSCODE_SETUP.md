@@ -73,6 +73,9 @@ Replace `<your-server-host>:<port>`, `<login>`, and `<password>` with the detail
 }
 ```
 
+`YB_MODE` is optional since 2.2.0 — omit it and your role is detected automatically; managers
+can use login/password instead of a key pair.
+
 (Full list of variables and other setups: [Configuration](./CONFIGURATION.md).)
 
 ## Step 3 — Start the server and enable its tools

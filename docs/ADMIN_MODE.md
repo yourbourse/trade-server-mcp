@@ -18,10 +18,17 @@ If you are a trader with a single account, you want [Client Mode](./CLIENT_MODE.
 
 ## Credentials
 
-Admin mode authenticates with a static **admin API key pair** — `YB_API_KEY` +
-`YB_SECRET_KEY` — issued from your YourBourse server administration setup. The secret key
-never leaves your machine; it is only used to sign requests locally. Full setup, including
-copy-paste config for Claude Desktop and Claude Code, is in
+Admin mode authenticates in either of two ways:
+
+- **Manager sign-in (login + password)** — `YB_LOGIN` + `YB_PASSWORD`, the same form and
+  configuration traders use, pointed at your **admin API address**. The server signs in and
+  holds a session token that refreshes automatically. Auto-detection picks admin mode for
+  manager logins on its own — no `YB_MODE` needed (`YB_MODE=admin` forces it).
+- **A static admin API key pair** — `YB_API_KEY` + `YB_SECRET_KEY` — issued from your
+  YourBourse server administration setup. The secret key never leaves your machine; it is
+  only used to sign requests locally.
+
+Full setup, including copy-paste config for Claude Desktop and Claude Code, is in
 [Configuration](./CONFIGURATION.md). How signing works is in
 [Authentication](./AUTHENTICATION.md).
 

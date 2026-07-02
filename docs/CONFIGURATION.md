@@ -14,31 +14,36 @@ unset.
 
 | Variable | Applies to | Required | Description |
 |---|---|---|---|
-| `YB_BASE_URL` | All modes | Yes | Base URL of your YourBourse Trade Server, including the scheme and port, with no trailing slash — for example `https://<your-server-host>:<port>`. The MCP appends `/api/v1/...` to this URL for every request. **HTTPS is required by default** to protect credentials in transit. **The port depends on the mode**: the client (public) API and the admin API are served on different ports of the same Trade Server — use the client port for client mode and the admin port for admin mode; your broker or server operator tells you which is which. |
+| `YB_BASE_URL` | All modes | Yes | Base URL of your YourBourse Trade Server, including the scheme and port, with no trailing slash — for example `https://<your-server-host>:<port>`. The MCP appends `/api/v1/...` to this URL for every request. **HTTPS is required by default** to protect credentials in transit. **The port depends on your role**: the client (public) API and the admin API are served on different ports of the same Trade Server — traders: the client/public port; managers: the admin port — the detected role follows the address. Your broker or server operator tells you which is which. |
 | `YB_ALLOW_INSECURE_BASE_URL` | All modes | No | Optional opt-in for local development only. When set to `true`, `1`, or `yes`, the server accepts `http://` base URLs (it still rejects other schemes and embedded URL credentials). Leave unset in production. |
-| `YB_MODE` | All modes | Recommended | `admin` or `client`. Optional when the mode can be inferred from your credential variables (see below), but always safe to set explicitly. |
+| `YB_MODE` | All modes | No (optional override) | `admin` or `client`. Set only to skip auto-detection — with login/password credentials the server signs in and detects your role automatically at startup. `YB_MODE=client` keeps exactly the pre-2.2.0 behavior (trader tools, no role probe). |
 | `YB_API_KEY` | Admin mode, or client mode with a token pair | Yes, in those setups | The API key (public half of the key pair) issued for your account. |
 | `YB_SECRET_KEY` | Admin mode, or client mode with a token pair | Yes, in those setups | The secret key (signing half of the key pair). It is used only to sign requests locally and is never transmitted. |
-| `YB_LOGIN` | Client mode with login/password | Yes, in that setup | Your trading account number. Must be a positive integer. |
-| `YB_PASSWORD` | Client mode with login/password | Yes, in that setup | Your trading account password. It is used only as the local signing secret for the sign-in request — it is never sent over the network, logged, or echoed. |
-| `YB_BROKER` | Client mode with login/password | No | Your broker's company name, sent along with the sign-in request. Only needed if your broker tells you to set it (for example, when one server hosts more than one broker). |
+| `YB_LOGIN` | Login/password sign-ins (trader, manager, or auto) | Yes, in that setup | Your account number. Must be a positive integer. |
+| `YB_PASSWORD` | Login/password sign-ins (trader, manager, or auto) | Yes, in that setup | Your account password. It is used only as the local signing secret for the sign-in request — it is never sent over the network, logged, or echoed. |
+| `YB_BROKER` | Login/password sign-ins (trader, manager, or auto) | No | Your broker's company name, sent along with the sign-in request. Only needed if your broker tells you to set it (for example, when one server hosts more than one broker). |
 | `YB_REQUEST_TIMEOUT_MS` | All modes | No | Per-request timeout for all REST calls, in milliseconds. Positive integer. Default `10000` (10s). On expiry the call fails with a stable `TIMEOUT` error; timeouts are never auto-retried (so an in-flight order placement is not re-sent). |
 
 ## Mode selection and inference
 
-There are three working setups:
+There are four working setups:
 
-1. **Admin mode** — for broker administrators. Uses a static admin key pair
+1. **Admin mode, key pair** — for broker administrators. Uses a static admin key pair
    (`YB_API_KEY` + `YB_SECRET_KEY`). Server-wide access.
 2. **Client mode, login/password** — for traders. Signs in with `YB_LOGIN` + `YB_PASSWORD`
    (plus `YB_BROKER` if your broker requires it) and manages its session token automatically.
 3. **Client mode, token pair** — for traders who have been issued a public API token pair by
    their broker. Uses `YB_API_KEY` + `YB_SECRET_KEY` with `YB_MODE=client`.
+4. **Admin mode, manager sign-in** — for broker managers. Signs in with `YB_LOGIN` +
+   `YB_PASSWORD` at the admin API address; manager logins are auto-detected (`YB_MODE=admin`
+   forces it), and the session token refreshes automatically.
 
 The mode is decided in this order of precedence:
 
 1. If `YB_MODE` is set, it wins. Valid values are `admin` and `client`.
-2. Otherwise, if `YB_LOGIN` or `YB_PASSWORD` is set, the mode is inferred as **client**.
+2. Otherwise, if `YB_LOGIN` or `YB_PASSWORD` is set, the mode is **auto-detected** at startup
+   (manager → admin tools, trader → client tools): the server signs in and probes the account's
+   role, failing closed to client if the probe cannot confirm a manager.
 3. Otherwise, if `YB_API_KEY` or `YB_SECRET_KEY` is set, the mode is inferred as **admin**.
 4. Otherwise, startup fails with a configuration error.
 
@@ -237,6 +242,31 @@ claude mcp add trade-server \
 }
 ```
 
+### Setup 4: Admin mode via manager sign-in (broker managers)
+
+A manager's login + password works just like a trader's — point `YB_BASE_URL` at your **admin API
+address** and the role is detected automatically at startup, so no `YB_MODE` is needed. The
+session token refreshes automatically — no static keys to manage. (Setting `YB_MODE=admin` forces
+admin mode and skips detection.)
+
+**Claude Desktop** — add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "trade-server": {
+      "command": "npx",
+      "args": ["-y", "github:yourbourse/trade-server-mcp"],
+      "env": {
+        "YB_BASE_URL": "https://<your-server-host>:<admin-port>",
+        "YB_LOGIN": "<manager-login>",
+        "YB_PASSWORD": "<manager-password>"
+      }
+    }
+  }
+}
+```
+
 > **Running from a local clone:** if you cloned and built the repo (see
 > [Getting Started](./GETTING_STARTED.md)), replace the `command`/`args` pair above with
 > `"command": "node", "args": ["<path-to-repo>/dist/index.js"]`. The `env` block stays
@@ -351,13 +381,13 @@ trader connection to another. The MCP runs as one process per connection, so you
 
 Any combination works — admin on one server and client on another, production and test, and so
 on. Each connection is just another named entry with the credentials for that server (any of
-the three setups above).
+the four setups above).
 
 **Other hosts:** in VS Code the same idea applies under the `servers` key (see
 [VS Code setup](./VSCODE_SETUP.md)) — add a second named entry. The one exception is the
-**`.mcpb` Claude Desktop extension**, which installs as a single trader (client) connection with
-one set of details; to run more than one server, or any admin connection, use the JSON
-configuration shown above.
+**`.mcpb` Claude Desktop extension**, which installs as a single connection with one set of
+details — either role, detected automatically when it signs in; to run more than one server,
+use the JSON configuration shown above.
 
 > **One server per entry.** Each registration is fixed to its configured server and mode when it
 > starts — there is no switching between servers within a single entry. To reach another server,
@@ -394,9 +424,12 @@ Every message is followed by this help text:
 
 ```
 Trade Server MCP configuration:
-  Admin mode  (brokers): YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY [+ YB_MODE=admin] (set YB_MODE explicitly if mixing credential variables)
-  Client mode (traders): YB_BASE_URL + YB_LOGIN + YB_PASSWORD [+ YB_BROKER] + YB_MODE=client
-  Client mode (token):   YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY + YB_MODE=client
+  Sign in (recommended):  YB_BASE_URL + YB_LOGIN + YB_PASSWORD [+ YB_BROKER]
+                          — your role (trader or manager) is detected automatically.
+  Explicit override:      add YB_MODE=client or YB_MODE=admin to skip detection.
+  API key pair:           YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY (admin, or client tokens with YB_MODE=client)
+  Optional (all modes):   YB_REQUEST_TIMEOUT_MS (per-request timeout in ms; positive integer; default 10000)
+  Optional (all modes):   YB_ALLOW_INSECURE_BASE_URL (true/1/yes — allow http:// for local development only)
 ```
 
 | Error message | What to do |
@@ -408,14 +441,16 @@ Trade Server MCP configuration:
 | `YB_BASE_URL must not include username/password credentials.` | Remove the embedded `user:pass@` from the URL. Credentials belong in `YB_API_KEY`/`YB_SECRET_KEY` or `YB_LOGIN`/`YB_PASSWORD`, never in the URL. |
 | `Admin mode requires YB_API_KEY.` | You are in admin mode (explicitly, or inferred from `YB_SECRET_KEY`) but `YB_API_KEY` is missing. Add it, or switch to a client setup. |
 | `Admin mode requires YB_SECRET_KEY.` | Same as above, but the secret half of the pair is missing. Add `YB_SECRET_KEY`. |
-| `Client mode: set either YB_LOGIN/YB_PASSWORD or YB_API_KEY/YB_SECRET_KEY, not both.` | You provided both credential styles in client mode. Remove the pair you do not intend to use. |
+| `Admin login mode: set either YB_LOGIN/YB_PASSWORD or YB_API_KEY/YB_SECRET_KEY, not both.` (or `Client login mode: set either …`) | You provided both credential styles. Remove the pair you do not intend to use. |
 | `Client login mode requires YB_LOGIN.` | You set `YB_PASSWORD` but not `YB_LOGIN`. Add your account number. |
-| `YB_LOGIN must be a positive integer (got "<value>").` | `YB_LOGIN` must be your numeric account number — digits only, no spaces or letters. |
 | `Client login mode requires YB_PASSWORD.` | You set `YB_LOGIN` but not `YB_PASSWORD`. Add your account password. |
+| `Admin login mode requires YB_LOGIN.` | `YB_MODE=admin` with a password but no login. Add your manager account number. |
+| `Admin login mode requires YB_PASSWORD.` | `YB_MODE=admin` with a login but no password. Add your manager account password. |
+| `YB_LOGIN must be a positive integer (got "<value>").` | `YB_LOGIN` must be your numeric account number — digits only, no spaces or letters. |
 | `Client token mode requires both YB_API_KEY and YB_SECRET_KEY.` | In client token mode, both halves of the token pair are required. Add the missing one. |
 | `Client mode requires credentials.` | `YB_MODE=client` is set but no credentials were found. Add either `YB_LOGIN` + `YB_PASSWORD` or `YB_API_KEY` + `YB_SECRET_KEY`. |
 | `Unknown YB_MODE "<value>". Valid values: admin, client.` | `YB_MODE` must be exactly `admin` or `client` (lowercase). Fix the value. |
-| `No mode could be inferred — set either YB_API_KEY + YB_SECRET_KEY (admin) or YB_LOGIN + YB_PASSWORD (client).` | `YB_BASE_URL` is set but no credential variables are. Add credentials for the mode you want. |
+| `No mode could be inferred — set YB_LOGIN + YB_PASSWORD (sign-in, auto-detected role) or YB_API_KEY + YB_SECRET_KEY (admin keys).` | `YB_BASE_URL` is set but no credential variables are. Add credentials for the setup you want. |
 
 When startup fails this way, the process prints `Fatal error:` followed by the message above to
 stderr and exits with code 1. Where to find your MCP client's stderr log is covered in
@@ -426,22 +461,60 @@ stderr and exits with code 1. Where to find your MCP client's stderr log is cove
 On a healthy start, the server writes one mode line to stderr, then a final ready line. These
 are the exact strings to look for:
 
-**Admin mode:**
+**Login/password without `YB_MODE` (auto-detected role)** — the server signs in and detects
+whether the account is a manager or a trader:
+
+```
+Trade Server MCP: auto-detected manager account <login> — admin mode (server-wide tools)
+```
+
+```
+Trade Server MCP: auto-detected trader account <login> — client mode
+```
+
+Before falling back to client mode, the role probe writes its reason to stderr (the probe is
+capped at 5 seconds):
+
+```
+Trade Server MCP: role probe → trader (<reason>)
+```
+
+**Auto-detection, sign-in failed** — the server still starts in client mode, registers the
+client tools, and retries sign-in on each tool call. `<hint>` is a targeted diagnosis of the
+failure (wrong credentials, server version, or connectivity — see
+[Troubleshooting](./TROUBLESHOOTING.md)):
+
+```
+Trade Server MCP: auto-detect — sign-in FAILED → client mode. <hint> Tools are registered; calls will retry sign-in. If this account is a manager, fix the credentials and restart — the role is detected only at startup.
+```
+
+**Admin mode, API key pair:**
 
 ```
 Trade Server MCP: admin mode (server-wide tools)
 ```
 
-**Client mode, login/password, sign-in succeeded** (the account number is your `YB_LOGIN`):
+**Admin mode, manager login/password (`YB_MODE=admin`), sign-in succeeded:**
+
+```
+Trade Server MCP: admin mode, signed in as manager account <login>
+```
+
+**Admin mode, manager login/password, sign-in failed** — the admin tools are still registered
+and each call retries sign-in:
+
+```
+Trade Server MCP: admin mode — sign-in FAILED. <hint> Tools are registered; calls will retry sign-in.
+```
+
+**Explicit `YB_MODE=client`, login/password, sign-in succeeded** (the account number is your
+`YB_LOGIN`):
 
 ```
 Trade Server MCP: client mode, signed in as account <login>
 ```
 
-**Client mode, login/password, sign-in failed** — the server still starts, registers all tools,
-and retries sign-in on each tool call. `<hint>` is a targeted diagnosis of the failure
-(wrong credentials, server version, or connectivity — see
-[Troubleshooting](./TROUBLESHOOTING.md)):
+**Explicit `YB_MODE=client`, login/password, sign-in failed:**
 
 ```
 Trade Server MCP: client mode — sign-in FAILED. <hint> Tools are registered; calls will retry sign-in.

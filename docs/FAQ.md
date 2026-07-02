@@ -111,7 +111,9 @@ From your broker, in both cases. Traders normally already have a trading account
 password (the same ones used in the broker's trading terminal), which work directly as
 `YB_LOGIN` + `YB_PASSWORD`. Some brokers instead issue a public API **token pair** for API
 access — if you have one, configure it as `YB_API_KEY` + `YB_SECRET_KEY` with
-`YB_MODE=client`. Admin key pairs are issued only to broker administrators.
+`YB_MODE=client`. Managers can sign in the same way as traders — a **manager login and
+password** works as `YB_LOGIN` + `YB_PASSWORD` (the role is detected automatically). Admin
+key pairs are issued only to broker administrators.
 
 If your portal exposes an **Access Tokens** page you can create the token pair yourself; the
 step-by-step (and an important note about **token expiration** — token-pair mode does not
@@ -122,10 +124,11 @@ refreshes automatically.
 
 ## Did admin mode change in this release?
 
-No. Version 1.1.0 added client mode — the trader-scoped tool set with login/password and
-token-pair sign-in — alongside the existing admin tools. Admin mode kept its tool set and its
-static key-pair authentication; if you were using it before, your configuration keeps working
-unchanged.
+Yes — 2.2.0 adds **manager sign-in with login/password** and **automatic role detection**:
+sign in with `YB_LOGIN` + `YB_PASSWORD` (no `YB_MODE`) and a manager account gets the admin
+tool set automatically, with an auto-refreshing session. Static key pairs keep working
+unchanged — if you were using `YB_API_KEY` + `YB_SECRET_KEY` before, your configuration
+still works.
 
 ## Can I use this with MCP clients other than Claude?
 

@@ -22,8 +22,10 @@ manages the session for you:
 
 - **Automatic sign-in.** With `YB_LOGIN` + `YB_PASSWORD`, the server signs in when it starts.
   Your password is never sent over the network — it is only used locally to sign the sign-in
-  request. On success you'll see `Trade Server MCP: client mode, signed in as account <login>`
-  in the startup log.
+  request. On success you'll see
+  `Trade Server MCP: auto-detected trader account <login> — client mode` in the startup log
+  (login/password with no `YB_MODE` — the role is detected automatically); with an explicit
+  `YB_MODE=client` the line is `Trade Server MCP: client mode, signed in as account <login>`.
 - **Automatic refresh.** Session tokens expire. The MCP refreshes the token in the background
   at about 80% of its lifetime, so a long conversation never stalls on an expired session.
 - **Automatic recovery.** If a request is rejected as unauthorized (for example after a
@@ -46,7 +48,7 @@ carries a targeted hint telling you which of the three likely causes applies:
 - Sign-in rejected — HTTP 400/404, an invalid request parameter (check the URL/port and any
   optional fields such as `YB_BROKER`):
 
-  > Sign-in was rejected by the Trade Server (HTTP 400/404) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to the client (public) API (it can use a different port from the admin API), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for the client API on this server, or the server version may predate it — check with your broker.
+  > Sign-in was rejected by the Trade Server (HTTP 400/404) — usually an invalid request parameter or wrong endpoint. Verify YB_BASE_URL points to your Trade Server's API address (traders: the client/public API; managers: the admin API — they can differ in port), and that any optional fields (e.g. YB_BROKER) are correct or left unset. If the configuration is correct, the account may not be enabled for this API on this server, or the server version may predate it — check with your broker.
 
 - Connectivity (the server could not be reached at all):
 
