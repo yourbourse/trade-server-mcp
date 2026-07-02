@@ -1,7 +1,7 @@
 {
   "name": "trade-server-mcp",
-  "version": "2.1.0",
-  "description": "MCP server for the YourBourse Trade Server — broker (admin) and trader (client) modes",
+  "version": "2.2.0",
+  "description": "MCP server for the YourBourse Trade Server — trader and manager (admin) modes, auto-detected from your sign-in",
   "author": "YourBourse",
   "license": "SEE LICENSE IN LICENSE",
   "private": true,

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-07-02
+
+### Added
+
+- **Automatic role detection for login/password sign-ins.** With no `YB_MODE` set, the server signs in and detects whether the account is a **manager** (admin tools) or a **trader** (client tools) — one configuration story for everyone. Detection is fail-closed: if it cannot confirm a manager, it starts in client mode (the role probe is capped at 5 seconds).
+- **Admin mode via manager sign-in.** `YB_MODE=admin` (or auto-detection) now works with `YB_LOGIN`/`YB_PASSWORD` — a manager session that refreshes automatically, as an alternative to static API keys.
+- `health_check` now reports the detected mode (client/admin) and, for login/password sign-ins, the account number — so you can always see which role was picked.
+
+### Changed
+
+- **The Claude Desktop extension is back to one credential set** — server address, login, password (+ optional broker). The API key/secret fields added in 2.1.0 are gone from the form; key-pair configuration remains available in manual/npx setups.
+- **Upgrading the extension from 2.1.0:** if you configured an API key in 2.1.0, open Settings → Extensions → trade-server-mcp → Configure, enter your manager **login and password** (keep your admin server address), Save, and toggle the extension off/on. Your previously saved key/secret is no longer read.
+- Login/password configurations without an explicit `YB_MODE` now perform one role-detection request at startup (previously they were assumed to be traders). A manager login that used to get trader tools now correctly gets admin tools. Set `YB_MODE=client` (or `admin`) explicitly to skip detection and keep exactly the previous behavior.
+
 ## [2.1.0] - 2026-07-01
 
 ### Added
@@ -102,7 +116,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial internal release: admin mode with 38 tools — trading, account management, market data with locally computed technical indicators, server configuration — plus 4 MCP resources.
 
-[Unreleased]: https://github.com/yourbourse/trade-server-mcp/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/yourbourse/trade-server-mcp/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/yourbourse/trade-server-mcp/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.4...v2.1.0
 [2.0.4]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/yourbourse/trade-server-mcp/compare/v2.0.2...v2.0.3

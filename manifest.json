@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.3",
   "name": "trade-server-mcp",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Trade on a YourBourse Trade Server from Claude — trader or manager, detected automatically when you sign in.",
   "author": { "name": "YourBourse", "url": "https://yourbourse.com" },
   "icon": "icon.png",
