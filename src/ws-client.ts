@@ -169,19 +169,21 @@ export class WsClient {
     // subscribing — the provider's single-flight guard coalesces concurrent attempts.
     // If recovery fails (returns false OR throws), the frame still goes out and the
     // server rejects it cleanly.
-    if (!this.provider.getApiKey() && this.provider.handleUnauthorized) {
+    let apiKey = this.provider.getApiKey();
+    if (!apiKey && this.provider.handleUnauthorized) {
       try {
         await this.provider.handleUnauthorized();
       } catch {
         // proceed without a key — the server's rejection is the error surface
       }
+      apiKey = this.provider.getApiKey();
     }
     const msg = {
       m: "subscribe" as const,
       c: channel,
       p: payload,
       h: {
-        "X-YB-API-Key": this.provider.getApiKey(),
+        "X-YB-API-Key": apiKey,
         "X-YB-LOCALE": "en" as const,
       },
       reqId,
