@@ -1,5 +1,11 @@
 export type ServerConfig = (
-  | { mode: "admin"; baseUrl: string; apiKey: string; secretKey: string }
+  | {
+      mode: "admin";
+      baseUrl: string;
+      auth:
+        | { style: "keys"; apiKey: string; secretKey: string }
+        | { style: "login"; login: number; password: string; broker?: string };
+    }
   | {
       mode: "client";
       baseUrl: string;
@@ -7,14 +13,20 @@ export type ServerConfig = (
         | { style: "login"; login: number; password: string; broker?: string }
         | { style: "token"; apiKey: string; secretKey: string };
     }
+  | {
+      mode: "auto";
+      baseUrl: string;
+      auth: { style: "login"; login: number; password: string; broker?: string };
+    }
 ) & { requestTimeoutMs: number };
 
 const HELP = `Trade Server MCP configuration:
-  Admin mode  (brokers): YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY [+ YB_MODE=admin] (set YB_MODE explicitly if mixing credential variables)
-  Client mode (traders): YB_BASE_URL + YB_LOGIN + YB_PASSWORD [+ YB_BROKER] + YB_MODE=client
-  Client mode (token):   YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY + YB_MODE=client
-  Optional (all modes):  YB_REQUEST_TIMEOUT_MS (per-request timeout in ms; positive integer; default 10000)
-  Optional (all modes):  YB_ALLOW_INSECURE_BASE_URL (true/1/yes — allow http:// base URLs for local development only; https:// is required otherwise)`;
+  Sign in (recommended):  YB_BASE_URL + YB_LOGIN + YB_PASSWORD [+ YB_BROKER]
+                          — your role (trader or manager) is detected automatically.
+  Explicit override:      add YB_MODE=client or YB_MODE=admin to skip detection.
+  API key pair:           YB_BASE_URL + YB_API_KEY + YB_SECRET_KEY (admin, or client tokens with YB_MODE=client)
+  Optional (all modes):   YB_REQUEST_TIMEOUT_MS (per-request timeout in ms; positive integer; default 10000)
+  Optional (all modes):   YB_ALLOW_INSECURE_BASE_URL (true/1/yes — allow http:// for local development only)`;
 
 export function parseConfig(env: Record<string, string | undefined>): ServerConfig {
   const v = (name: string) => {
@@ -77,37 +89,50 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
 
   const hasLogin = login_raw !== undefined || password_raw !== undefined;
   const hasKeys = apiKey_raw !== undefined || secretKey_raw !== undefined;
-  const mode = mode_raw ?? (hasLogin ? "client" : hasKeys ? "admin" : undefined);
+  // Login/password without an explicit YB_MODE = "auto": the bootstrap signs in and
+  // detects the account's role (manager -> admin tools, trader -> client tools).
+  const mode = mode_raw ?? (hasLogin ? "auto" : hasKeys ? "admin" : undefined);
+
+  // Shared login/password validation — the same rules apply in client, admin and auto modes.
+  const parseLoginAuth = (label: string) => {
+    if (hasLogin && hasKeys) {
+      throw new Error(
+        `${label}: set either YB_LOGIN/YB_PASSWORD or YB_API_KEY/YB_SECRET_KEY, not both.\n${HELP}`,
+      );
+    }
+    if (!login_raw) throw new Error(`${label} requires YB_LOGIN.\n${HELP}`);
+    const login = Number(login_raw);
+    if (!Number.isInteger(login) || login <= 0) {
+      throw new Error(`YB_LOGIN must be a positive integer (got "${login_raw}").\n${HELP}`);
+    }
+    if (!password_raw) throw new Error(`${label} requires YB_PASSWORD.\n${HELP}`);
+    return { style: "login" as const, login, password: password_raw, broker: broker_raw };
+  };
 
   if (mode === "admin") {
+    if (hasLogin) {
+      return { mode: "admin", baseUrl, auth: parseLoginAuth("Admin login mode"), requestTimeoutMs };
+    }
     if (!apiKey_raw) throw new Error(`Admin mode requires YB_API_KEY.\n${HELP}`);
     if (!secretKey_raw) throw new Error(`Admin mode requires YB_SECRET_KEY.\n${HELP}`);
     return {
       mode: "admin",
       baseUrl,
-      apiKey: apiKey_raw,
-      secretKey: secretKey_raw,
+      auth: { style: "keys", apiKey: apiKey_raw, secretKey: secretKey_raw },
       requestTimeoutMs,
     };
   }
 
+  if (mode === "auto") {
+    return { mode: "auto", baseUrl, auth: parseLoginAuth("Client login mode"), requestTimeoutMs };
+  }
+
   if (mode === "client") {
-    if (hasLogin && hasKeys) {
-      throw new Error(
-        `Client mode: set either YB_LOGIN/YB_PASSWORD or YB_API_KEY/YB_SECRET_KEY, not both.\n${HELP}`,
-      );
-    }
     if (hasLogin) {
-      if (!login_raw) throw new Error(`Client login mode requires YB_LOGIN.\n${HELP}`);
-      const login = Number(login_raw);
-      if (!Number.isInteger(login) || login <= 0) {
-        throw new Error(`YB_LOGIN must be a positive integer (got "${login_raw}").\n${HELP}`);
-      }
-      if (!password_raw) throw new Error(`Client login mode requires YB_PASSWORD.\n${HELP}`);
       return {
         mode: "client",
         baseUrl,
-        auth: { style: "login", login, password: password_raw, broker: broker_raw },
+        auth: parseLoginAuth("Client login mode"),
         requestTimeoutMs,
       };
     }
@@ -129,6 +154,6 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
     throw new Error(`Unknown YB_MODE "${mode_raw}". Valid values: admin, client.\n${HELP}`);
   }
   throw new Error(
-    `No mode could be inferred — set either YB_API_KEY + YB_SECRET_KEY (admin) or YB_LOGIN + YB_PASSWORD (client).\n${HELP}`,
+    `No mode could be inferred — set YB_LOGIN + YB_PASSWORD (sign-in, auto-detected role) or YB_API_KEY + YB_SECRET_KEY (admin keys).\n${HELP}`,
   );
 }

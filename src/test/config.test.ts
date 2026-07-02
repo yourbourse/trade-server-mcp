@@ -7,12 +7,13 @@ const BASE = { YB_BASE_URL: "https://ts.example.com:22236" };
 test("admin mode from key pair (inferred)", () => {
   const c = parseConfig({ ...BASE, YB_API_KEY: "k", YB_SECRET_KEY: "s" });
   assert.equal(c.mode, "admin");
+  assert.equal(c.mode === "admin" && c.auth.style, "keys");
 });
 
-test("client mode inferred from login", () => {
+test("auto mode carries the login auth payload", () => {
   const c = parseConfig({ ...BASE, YB_LOGIN: "100", YB_PASSWORD: "pw" });
-  assert.equal(c.mode, "client");
-  if (c.mode === "client")
+  assert.equal(c.mode, "auto");
+  if (c.mode === "auto")
     assert.deepEqual(c.auth, { style: "login", login: 100, password: "pw", broker: undefined });
 });
 
@@ -60,9 +61,9 @@ test("unknown YB_MODE value throws naming the valid values", () => {
   );
 });
 
-test("broker passthrough in client login mode", () => {
+test("broker passthrough in login mode (auto)", () => {
   const c = parseConfig({ ...BASE, YB_LOGIN: "7", YB_PASSWORD: "p", YB_BROKER: "ACME Ltd" });
-  assert.ok(c.mode === "client" && c.auth.style === "login" && c.auth.broker === "ACME Ltd");
+  assert.ok(c.mode === "auto" && c.auth.style === "login" && c.auth.broker === "ACME Ltd");
 });
 
 test("whitespace-only YB_BASE_URL throws with variable name in message", () => {
@@ -85,7 +86,7 @@ test("an unsubstituted ${...} placeholder (blank optional .mcpb field) is treate
     YB_PASSWORD: "pw",
     YB_BROKER: "${user_config.yb_broker}",
   });
-  assert.ok(c.mode === "client" && c.auth.style === "login" && c.auth.broker === undefined);
+  assert.ok(c.mode === "auto" && c.auth.style === "login" && c.auth.broker === undefined);
 });
 
 test("requestTimeoutMs defaults to 10000 when unset", () => {
@@ -185,10 +186,10 @@ const MCPB_BLANK_LOGIN = {
   YB_BROKER: "${user_config.yb_broker}",
 };
 
-test(".mcpb trader shape (login/password filled, key/secret blank) infers client login mode", () => {
-  const c = parseConfig({ ...BASE, YB_LOGIN: "100", YB_PASSWORD: "pw", ...MCPB_BLANK_KEYS });
-  assert.equal(c.mode, "client");
-  assert.equal(c.mode === "client" && c.auth.style, "login");
+test(".mcpb trader shape (login/password filled) resolves to auto mode", () => {
+  const c = parseConfig({ ...BASE, YB_LOGIN: "100", YB_PASSWORD: "pw" });
+  assert.equal(c.mode, "auto");
+  assert.equal(c.mode === "auto" && c.auth.style, "login");
 });
 
 test(".mcpb manager shape (key/secret filled, login/password blank) infers admin mode", () => {
@@ -215,4 +216,31 @@ test(".mcpb all credential fields blank throws the no-mode help", () => {
     () => parseConfig({ ...BASE, ...MCPB_BLANK_LOGIN, ...MCPB_BLANK_KEYS }),
     /No mode could be inferred/,
   );
+});
+
+// --- B12: role auto-detection + admin-via-login ---
+
+test("YB_MODE=admin with login/password is a manager session", () => {
+  const c = parseConfig({ ...BASE, YB_MODE: "admin", YB_LOGIN: "1", YB_PASSWORD: "pw" });
+  assert.equal(c.mode, "admin");
+  assert.equal(c.mode === "admin" && c.auth.style, "login");
+});
+
+test("YB_MODE=admin with both credential sets throws (ambiguous)", () => {
+  assert.throws(
+    () =>
+      parseConfig({
+        ...BASE,
+        YB_MODE: "admin",
+        YB_LOGIN: "1",
+        YB_PASSWORD: "p",
+        YB_API_KEY: "k",
+        YB_SECRET_KEY: "s",
+      }),
+    /either YB_LOGIN\/YB_PASSWORD or YB_API_KEY\/YB_SECRET_KEY/,
+  );
+});
+
+test("YB_MODE=admin with password but no login throws requiring YB_LOGIN", () => {
+  assert.throws(() => parseConfig({ ...BASE, YB_MODE: "admin", YB_PASSWORD: "p" }), /YB_LOGIN/);
 });
