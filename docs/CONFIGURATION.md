@@ -441,9 +441,9 @@ Trade Server MCP configuration:
 | `YB_BASE_URL must not include username/password credentials.` | Remove the embedded `user:pass@` from the URL. Credentials belong in `YB_API_KEY`/`YB_SECRET_KEY` or `YB_LOGIN`/`YB_PASSWORD`, never in the URL. |
 | `Admin mode requires YB_API_KEY.` | You are in admin mode (explicitly, or inferred from `YB_SECRET_KEY`) but `YB_API_KEY` is missing. Add it, or switch to a client setup. |
 | `Admin mode requires YB_SECRET_KEY.` | Same as above, but the secret half of the pair is missing. Add `YB_SECRET_KEY`. |
-| `Admin login mode: set either YB_LOGIN/YB_PASSWORD or YB_API_KEY/YB_SECRET_KEY, not both.` (or `Client login mode: set either …`) | You provided both credential styles. Remove the pair you do not intend to use. |
-| `Client login mode requires YB_LOGIN.` | You set `YB_PASSWORD` but not `YB_LOGIN`. Add your account number. |
-| `Client login mode requires YB_PASSWORD.` | You set `YB_LOGIN` but not `YB_PASSWORD`. Add your account password. |
+| `Sign-in: set either YB_LOGIN/YB_PASSWORD or YB_API_KEY/YB_SECRET_KEY, not both.` (or `Client login mode: set either …` / `Admin login mode: set either …` when `YB_MODE` is set) | You provided both credential styles. Remove the pair you do not intend to use. |
+| `Sign-in requires YB_LOGIN.` (or `Client login mode requires YB_LOGIN.` with `YB_MODE=client`) | You set `YB_PASSWORD` but not `YB_LOGIN`. Add your account number. |
+| `Sign-in requires YB_PASSWORD.` (or `Client login mode requires YB_PASSWORD.` with `YB_MODE=client`) | You set `YB_LOGIN` but not `YB_PASSWORD`. Add your account password. |
 | `Admin login mode requires YB_LOGIN.` | `YB_MODE=admin` with a password but no login. Add your manager account number. |
 | `Admin login mode requires YB_PASSWORD.` | `YB_MODE=admin` with a login but no password. Add your manager account password. |
 | `YB_LOGIN must be a positive integer (got "<value>").` | `YB_LOGIN` must be your numeric account number — digits only, no spaces or letters. |

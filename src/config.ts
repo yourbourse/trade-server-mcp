@@ -124,7 +124,9 @@ export function parseConfig(env: Record<string, string | undefined>): ServerConf
   }
 
   if (mode === "auto") {
-    return { mode: "auto", baseUrl, auth: parseLoginAuth("Client login mode"), requestTimeoutMs };
+    // No YB_MODE was chosen, so error labels must not imply one ("Sign-in requires
+    // YB_LOGIN", not "Client login mode requires YB_LOGIN").
+    return { mode: "auto", baseUrl, auth: parseLoginAuth("Sign-in"), requestTimeoutMs };
   }
 
   if (mode === "client") {

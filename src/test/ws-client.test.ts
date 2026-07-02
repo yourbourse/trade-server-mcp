@@ -165,3 +165,38 @@ test("subscribe sends the provider's CURRENT api key (token rotation)", async ()
   assert.equal(sent[1].h["X-YB-API-Key"], "token-2");
   client.disconnect();
 });
+
+test("subscribe recovers a missing api key via handleUnauthorized before sending", async () => {
+  let key = "";
+  let recoveries = 0;
+  const provider = {
+    getApiKey: () => key,
+    getSigningSecret: () => "",
+    handleUnauthorized: async () => {
+      recoveries += 1;
+      key = "recovered-token";
+      return true;
+    },
+  };
+  const sockets: FakeSocket[] = [];
+  const factory = (_url: string) => {
+    const s = new FakeSocket();
+    sockets.push(s);
+    return s as unknown as import("ws").WebSocket;
+  };
+  const client = new WsClient("https://ts.local", provider, factory);
+  activeClients.push(client);
+  const connecting = client.connect();
+  sockets[0].emit("open");
+  await connecting;
+
+  const p = client.subscribe("L1", { s: "EURUSD" }, "r1");
+  // The recovery await defers the send by a tick; let it land before acking.
+  await new Promise((r) => setTimeout(r, 0));
+  sockets[0].emit("message", JSON.stringify({ m: "subscribe", s: true, reqId: "r1" }));
+  await p;
+
+  assert.equal(recoveries, 1);
+  assert.equal(JSON.parse(sockets[0].sent[0]).h["X-YB-API-Key"], "recovered-token");
+  client.disconnect();
+});

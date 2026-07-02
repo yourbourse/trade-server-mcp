@@ -164,6 +164,13 @@ export class WsClient {
     payload: Record<string, unknown>,
     reqId: string,
   ): Promise<unknown> {
+    // A login-based provider has no key until its first successful sign-in (the server
+    // registers tools even when the startup sign-in failed). Try once to recover before
+    // subscribing — the provider's single-flight guard coalesces concurrent attempts.
+    // If recovery fails the frame still goes out and the server rejects it cleanly.
+    if (!this.provider.getApiKey() && this.provider.handleUnauthorized) {
+      await this.provider.handleUnauthorized();
+    }
     const msg = {
       m: "subscribe" as const,
       c: channel,

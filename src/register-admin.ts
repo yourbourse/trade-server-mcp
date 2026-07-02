@@ -433,11 +433,14 @@ export function registerAdminTools(
     "health_check",
     "Check if Trade Server is running and responsive. Returns current server time, which mode this server runs in (manager/admin) and, when signed in with a manager login/password, the account number. Use to verify connectivity before other operations.",
     healthCheckSchema.shape,
-    toolHandler(async () => ({
-      ...((await healthCheck(restClient)) as Record<string, unknown>),
-      mode: "admin",
-      ...(managerAccount && managerAccount() != null ? { account: managerAccount() } : {}),
-    })),
+    toolHandler(async () => {
+      const account = managerAccount?.() ?? null;
+      return {
+        ...((await healthCheck(restClient)) as Record<string, unknown>),
+        mode: "admin",
+        ...(account != null ? { account } : {}),
+      };
+    }),
   );
 
   // === RESOURCES ===
