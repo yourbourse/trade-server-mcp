@@ -245,9 +245,15 @@ export function registerClientTools(server: McpServer, client: RestClient, auth?
   );
   server.tool(
     "health_check",
-    "Check the Trade Server is running and responsive. Returns current server time.",
+    "Check the Trade Server is running and responsive. Returns current server time, which mode this server runs in (trader/client vs manager/admin) and, when signed in with a login/password, the account number.",
     m.healthCheckSchema.shape,
-    toolHandler(withHint(() => m.healthCheck(client))),
+    toolHandler(
+      withHint(async () => ({
+        ...((await m.healthCheck(client)) as Record<string, unknown>),
+        mode: "client",
+        ...(auth?.account != null ? { account: auth.account } : {}),
+      })),
+    ),
   );
 
   server.resource(

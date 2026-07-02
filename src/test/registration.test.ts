@@ -122,3 +122,37 @@ test("admin mode registers exactly 42 tools and 4 resources", () => {
   assert.equal(toolCount, 42);
   assert.equal(resourceCount, 4);
 });
+
+test("client health_check echoes mode and signed-in account", async () => {
+  const server = new McpServer({ name: "t", version: "0" });
+  const handlers = new Map<
+    string,
+    (p: unknown) => Promise<{ content: { text: string }[]; isError?: boolean }>
+  >();
+  (server as any).tool = (name: string, _desc: string, _schema: unknown, handler: never) => {
+    handlers.set(name, handler);
+  };
+  const fakeClient = { get: async () => ({ now: 1 }) } as never;
+  const fakeAuth = { account: 100, authFailureHint: () => null } as never;
+  registerClientTools(server, fakeClient, fakeAuth);
+  const body = JSON.parse((await handlers.get("health_check")!({})).content[0].text);
+  assert.equal(body.mode, "client");
+  assert.equal(body.account, 100);
+});
+
+test("admin health_check echoes admin mode and the manager account", async () => {
+  const server = new McpServer({ name: "t", version: "0" });
+  const handlers = new Map<
+    string,
+    (p: unknown) => Promise<{ content: { text: string }[]; isError?: boolean }>
+  >();
+  (server as any).tool = (name: string, _desc: string, _schema: unknown, handler: never) => {
+    handlers.set(name, handler);
+  };
+  const fakeClient = { get: async () => ({ now: 1 }) } as never;
+  const ws = new WsClient("http://127.0.0.1:9", new StaticCredentials("k", "s"));
+  registerAdminTools(server, fakeClient, ws, () => 1);
+  const body = JSON.parse((await handlers.get("health_check")!({})).content[0].text);
+  assert.equal(body.mode, "admin");
+  assert.equal(body.account, 1);
+});

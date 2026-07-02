@@ -100,7 +100,12 @@ import {
   healthCheck,
 } from "./tools/admin/config.js";
 
-export function registerAdminTools(server: McpServer, restClient: RestClient, wsClient: WsClient) {
+export function registerAdminTools(
+  server: McpServer,
+  restClient: RestClient,
+  wsClient: WsClient,
+  managerAccount?: () => number | null,
+) {
   // === TRADING TOOLS ===
 
   server.registerTool(
@@ -426,9 +431,13 @@ export function registerAdminTools(server: McpServer, restClient: RestClient, ws
 
   server.tool(
     "health_check",
-    "Check if Trade Server is running and responsive. Returns current server time. Use to verify connectivity before other operations.",
+    "Check if Trade Server is running and responsive. Returns current server time, which mode this server runs in (manager/admin) and, when signed in with a manager login/password, the account number. Use to verify connectivity before other operations.",
     healthCheckSchema.shape,
-    toolHandler(() => healthCheck(restClient)),
+    toolHandler(async () => ({
+      ...((await healthCheck(restClient)) as Record<string, unknown>),
+      mode: "admin",
+      ...(managerAccount && managerAccount() != null ? { account: managerAccount() } : {}),
+    })),
   );
 
   // === RESOURCES ===
