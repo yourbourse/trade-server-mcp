@@ -116,8 +116,8 @@ test("admin mode registers exactly 42 tools and 4 resources", () => {
     return (originalResource as any)(...args);
   };
   const client = new RestClient("http://ts", new StaticCredentials("K", "S"));
-  // Real WsClient with dummy config — never connected, so no socket is opened.
-  const ws = new WsClient({ apiKey: "k", secretKey: "s", baseUrl: "http://127.0.0.1:9" });
+  // Real WsClient with dummy credentials — never connected, so no socket is opened.
+  const ws = new WsClient("http://127.0.0.1:9", new StaticCredentials("k", "s"));
   registerAdminTools(server, client, ws);
   assert.equal(toolCount, 42);
   assert.equal(resourceCount, 4);

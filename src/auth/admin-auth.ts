@@ -1,11 +1,5 @@
 import { createHmac } from "crypto";
 
-export interface AuthConfig {
-  apiKey: string;
-  secretKey: string;
-  baseUrl: string;
-}
-
 /**
  * Generate HMAC-SHA256 signature for POST/PUT/DELETE requests.
  * Uses timestamp method: Content=<body>\nTimestamp=<ts>

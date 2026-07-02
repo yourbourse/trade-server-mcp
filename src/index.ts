@@ -28,11 +28,10 @@ async function main() {
       new StaticCredentials(config.apiKey, config.secretKey),
       config.requestTimeoutMs,
     );
-    const wsClient = new WsClient({
-      apiKey: config.apiKey,
-      secretKey: config.secretKey,
-      baseUrl: config.baseUrl,
-    });
+    const wsClient = new WsClient(
+      config.baseUrl,
+      new StaticCredentials(config.apiKey, config.secretKey),
+    );
     const cleanup = () => {
       wsClient.disconnect();
       process.exit(0);

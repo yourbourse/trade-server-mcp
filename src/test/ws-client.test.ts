@@ -2,6 +2,7 @@ import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { WsClient } from "../ws-client.js";
+import { StaticCredentials } from "../auth/admin-auth.js";
 
 // Safety net: disconnect any client a test opened — even if an assertion threw
 // before the test's own disconnect() — so the keepalive ping interval can't leak
@@ -28,8 +29,6 @@ class FakeSocket extends EventEmitter {
   pong() {}
 }
 
-const CONFIG = { apiKey: "K", secretKey: "S", baseUrl: "https://ts.local" };
-
 function makeClient() {
   const sockets: FakeSocket[] = [];
   const factory = (_url: string) => {
@@ -37,7 +36,7 @@ function makeClient() {
     sockets.push(s);
     return s as unknown as import("ws").WebSocket;
   };
-  const client = new WsClient(CONFIG, factory);
+  const client = new WsClient("https://ts.local", new StaticCredentials("K", "S"), factory);
   activeClients.push(client);
   return { client, sockets };
 }
@@ -59,10 +58,7 @@ test("derives a case-insensitive wss:// URL even from an uppercase base-URL sche
     capturedUrl = url;
     return new FakeSocket() as unknown as import("ws").WebSocket;
   };
-  const client = new WsClient(
-    { apiKey: "K", secretKey: "S", baseUrl: "HTTPS://ts.local" },
-    factory,
-  );
+  const client = new WsClient("HTTPS://ts.local", new StaticCredentials("K", "S"), factory);
   activeClients.push(client);
   client.connect().catch(() => {}); // never opens in this test; the URL is derived synchronously
   assert.match(capturedUrl, /^wss:\/\/ts\.local\/ws\/v1$/);
@@ -137,5 +133,35 @@ test("getSnapshot collects data and resolves on success", async () => {
   sockets[0].emit("message", JSON.stringify({ reqId, c: "L1", d: [{ bid: 1.1, ask: 1.2 }] }));
   const result = await snap;
   assert.ok(Array.isArray(result) && result.length >= 1, "should collect the data frame");
+  client.disconnect();
+});
+
+test("subscribe sends the provider's CURRENT api key (token rotation)", async () => {
+  let key = "token-1";
+  const provider = { getApiKey: () => key, getSigningSecret: () => "" };
+  const sockets: FakeSocket[] = [];
+  const factory = (_url: string) => {
+    const s = new FakeSocket();
+    sockets.push(s);
+    return s as unknown as import("ws").WebSocket;
+  };
+  const client = new WsClient("https://ts.local", provider, factory);
+  activeClients.push(client);
+  const connecting = client.connect();
+  sockets[0].emit("open");
+  await connecting;
+
+  const p1 = client.subscribe("L1", { s: "EURUSD" }, "r1");
+  sockets[0].emit("message", JSON.stringify({ m: "subscribe", s: true, reqId: "r1" }));
+  await p1;
+
+  key = "token-2";
+  const p2 = client.subscribe("L1", { s: "GBPUSD" }, "r2");
+  sockets[0].emit("message", JSON.stringify({ m: "subscribe", s: true, reqId: "r2" }));
+  await p2;
+
+  const sent = sockets[0].sent.map((f) => JSON.parse(f));
+  assert.equal(sent[0].h["X-YB-API-Key"], "token-1");
+  assert.equal(sent[1].h["X-YB-API-Key"], "token-2");
   client.disconnect();
 });
