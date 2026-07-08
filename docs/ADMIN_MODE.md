@@ -2,8 +2,8 @@
 
 Admin mode is for the people who **run** the Trade Server: brokers and their operations teams.
 Where a trader sees one account, admin mode sees the whole server — every account, every
-group, every routing rule, every liquidity connector. It exposes **42 tools and 4 MCP
-resources** (see the [Tools Reference](./TOOLS_REFERENCE.md#admin-mode-42-tools) for every
+group, every routing rule, every liquidity connector. It exposes **43 tools and 4 MCP
+resources** (see the [Tools Reference](./TOOLS_REFERENCE.md#admin-mode-43-tools) for every
 parameter and example).
 
 What that means in practice:
@@ -34,13 +34,14 @@ Full setup, including copy-paste config for Claude Desktop and Claude Code, is i
 
 ## Admin-only tools
 
-Thirteen tools exist only in admin mode. When to reach for each:
+Fourteen tools exist only in admin mode. When to reach for each:
 
 | Tool | Use it when... |
 |---|---|
 | `get_all_accounts` | You need the list of every trading account on the server (IDs, groups, owners). |
 | `get_account_info` | You want one account's *configuration* — group, owner, leverage, read-only flag — not its money. |
-| `cash_transfer` | You are depositing, withdrawing, or adjusting an account's balance (see [transfer types](#cash-transfer-types) below). |
+| `cash_transfer_plan` | STEP 1 — you are previewing a deposit, withdrawal, or balance adjustment (see [transfer types](#cash-transfer-types) below); it validates and returns a single-use `commitToken` **without moving money**. |
+| `cash_transfer_commit` | STEP 2 — you have reviewed a `cash_transfer_plan` preview and are executing it; it takes the `commitToken` and moves the money **irreversibly**. |
 | `get_groups` | You need the list of trading groups and their IDs. |
 | `get_group` | You are reviewing one group's margin settings, commission rules, or symbol overrides. |
 | `get_clients` | You need the list of clients (account owners — each can own multiple accounts). |
@@ -75,8 +76,11 @@ The routing tools are designed around a **read → small change** workflow:
 
 ## Cash transfer types
 
-`cash_transfer` moves money on an account. The sign of `amount` decides direction: positive =
-deposit, negative = withdrawal. The `type` labels the transfer in the account's history:
+The `cash_transfer_plan` / `cash_transfer_commit` pair moves money on an account, confirm-first:
+`cash_transfer_plan` previews the transfer and returns a single-use `commitToken` without
+touching the balance, and `cash_transfer_commit` executes it once you pass that token. The sign
+of `amount` decides direction: positive = deposit, negative = withdrawal. The `type` labels the
+transfer in the account's history:
 
 - **`Balance`** — the standard deposit/withdrawal type. When in doubt, use this.
 - **`Credit`** / **`CreditBonus`** — credit facilities granted by the broker.
@@ -127,7 +131,7 @@ Review past movements with `get_transfer_history`.
 
 ## Where next
 
-- [Tools Reference](./TOOLS_REFERENCE.md) — all 42 admin tools with parameters and examples
+- [Tools Reference](./TOOLS_REFERENCE.md) — all 43 admin tools with parameters and examples
 - [Configuration](./CONFIGURATION.md) — admin credential setup
 - [Authentication](./AUTHENTICATION.md) — request signing with the admin key pair
 - [Security](./SECURITY.md) — key-handling guarantees and recommendations

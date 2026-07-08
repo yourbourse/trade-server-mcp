@@ -77,7 +77,7 @@ Say you're adding a new client-mode tool:
    from neighboring tools and to steer correct usage (the existing descriptions are the
    style guide).
 4. **Update the counts.** Bump `CLIENT_TOOL_COUNT` in `src/register-client.ts` and the
-   expected counts in `src/test/registration.test.ts` (client tools, or the admin 42/4
+   expected counts in `src/test/registration.test.ts` (client tools, or the admin 43/4
    assertions). The count test exists so a tool can't silently appear in or vanish from a
    mode.
 5. **Add an endpoint-mapping test** in the matching `src/test/` file asserting the exact URL,
@@ -102,7 +102,7 @@ conventions, all visible in `src/test/`:
   the vector independently if you intentionally change the scheme.
 - **Registration counts are pinned** (`src/test/registration.test.ts`): client mode registers
   exactly `CLIENT_TOOL_COUNT` (30) tools and none of them may expose an `accountId`
-  parameter; admin mode registers exactly 42 tools and 4 resources.
+  parameter; admin mode registers exactly 43 tools and 4 resources.
 - **Failure paths are first-class.** Auth lifecycle tests cover single-flight token rotation,
   refresh scheduling, 401 recovery, and the sign-in failure hints — including the case where
   an old server closes the connection instead of answering. New behavior with a failure mode

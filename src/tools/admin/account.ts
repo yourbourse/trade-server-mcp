@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { RestClient } from "../../rest-client.js";
+import { issuePlan, takeCommit } from "../../preview/plan-commit.js";
+import { completenessMessage } from "../../validation.js";
 
 export const getAccountStateSchema = z.object({
   accountId: z.number().describe("Trading account ID (login)"),
@@ -64,6 +66,67 @@ export async function cashTransfer(client: RestClient, params: z.infer<typeof ca
   if (params.comment) body.ct = params.comment;
 
   return client.post("/admin/transfers/edit", body);
+}
+
+// ===== cash_transfer preview/commit (confirm-before-execute) =====
+// cash_transfer moves real money irreversibly, so — like the trading money-movers — it is gated:
+// cash_transfer_plan validates + previews + issues a single-use token WITHOUT executing;
+// cash_transfer_commit consumes the token (bound to "cash_transfer") and runs the unchanged
+// cashTransfer() above.
+export const cashTransferPlanSchema = z.object({
+  accountId: z.number().optional().describe("Trading account ID"),
+  amount: z
+    .number()
+    .optional()
+    .describe("Transfer amount. Positive = deposit/credit, negative = withdrawal/debit"),
+  type: cashTransferSchema.shape.type
+    .optional()
+    .describe("Transfer type (Balance = deposit/withdrawal)"),
+  currency: z.string().optional().describe("Currency or asset name (default USD)"),
+  comment: z.string().optional().describe("Transfer comment"),
+});
+
+const CASH_TRANSFER_DISCLOSURE =
+  "You are confirming a LIVE cash transfer on a client account via an AI assistant — this moves " +
+  "real money and is irreversible. Review the account, amount, and direction, then call " +
+  "cash_transfer_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function cashTransferPlan(
+  client: RestClient,
+  params: z.infer<typeof cashTransferPlanSchema>,
+) {
+  const need = completenessMessage("cash_transfer_plan", params, [
+    { name: "accountId", label: "account ID" },
+    { name: "amount", label: "amount (positive = deposit, negative = withdrawal)" },
+    { name: "type", label: "transfer type", options: cashTransferSchema.shape.type.options },
+  ]);
+  if (need) return { needMoreInfo: need };
+  const preview = {
+    action: "cash_transfer",
+    accountId: params.accountId,
+    amount: params.amount,
+    direction:
+      (params.amount ?? 0) < 0 ? "withdrawal (debit from account)" : "deposit (credit to account)",
+    type: params.type,
+    currency: params.currency ?? "USD",
+    ...(params.comment ? { comment: params.comment } : {}),
+  };
+  const commitToken = issuePlan(params, "cash_transfer");
+  return { preview, commitToken, disclosure: CASH_TRANSFER_DISCLOSURE };
+}
+
+export const cashTransferCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by cash_transfer_plan"),
+});
+
+export async function cashTransferCommit(
+  client: RestClient,
+  params: z.infer<typeof cashTransferCommitSchema>,
+) {
+  return cashTransfer(
+    client,
+    cashTransferSchema.parse(takeCommit(params.commitToken, "cash_transfer")),
+  );
 }
 
 export const getTransferHistorySchema = z.object({

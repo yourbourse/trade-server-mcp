@@ -112,7 +112,7 @@ Some things are deliberately **not** available in client mode:
 - **No password or account management.** Changing your password belongs in your broker's
   client portal, not in an AI conversation.
 - **No deposits, withdrawals, or transfers.** Moving money is a broker-side operation
-  (admin-mode `cash_transfer`); a trader session can only *read* its transfer history.
+  (admin-mode `cash_transfer_plan` / `cash_transfer_commit`); a trader session can only *read* its transfer history.
 - **No admin tools.** Server configuration — routing rules, groups, liquidity connectors,
   other accounts — is invisible to a client session, both in this MCP and at the server's
   permission level.

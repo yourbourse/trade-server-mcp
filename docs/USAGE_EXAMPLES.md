@@ -197,7 +197,7 @@ and is best reserved for restoring a known-good configuration.
 
 **Tool calls:**
 
-1. `cash_transfer` —
+1. `cash_transfer_plan` —
 
    ```json
    {
@@ -209,12 +209,20 @@ and is best reserved for restoring a known-good configuration.
    }
    ```
 
-2. `get_account_state` — `{ "accountId": 12345 }`
+   **Nothing is moved yet** — this returns a preview (target account, amount, direction, type)
+   and a single-use `commitToken`.
 
-**What you get back:** the transfer confirmation, then the account's refreshed financial state
-showing the new balance. `type: "Balance"` is the standard deposit/withdrawal (negative
-`amount` withdraws); other types — Credit, Bonus, Commission, Adjustment, and more — are listed
-under `cash_transfer` in the [Tools Reference](./TOOLS_REFERENCE.md) and explained in
+2. *You review the preview and confirm.* Your AI shows you the transfer it's about to make; you
+   say something like *"yes, go ahead."*
+3. `cash_transfer_commit` — `{ "commitToken": "plan_a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d" }` — the
+   token from step 1. This is the step that actually moves the money.
+4. `get_account_state` — `{ "accountId": 12345 }`
+
+**What you get back:** the preview to confirm against, then — only after your confirmation — the
+transfer confirmation, and finally the account's refreshed financial state showing the new
+balance. `type: "Balance"` is the standard deposit/withdrawal (negative `amount` withdraws);
+other types — Credit, Bonus, Commission, Adjustment, and more — are listed under
+`cash_transfer_plan` in the [Tools Reference](./TOOLS_REFERENCE.md) and explained in
 [Admin Mode](./ADMIN_MODE.md#cash-transfer-types).
 
 ---

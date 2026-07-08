@@ -90,11 +90,12 @@ try {
   const names = new Set(tools.map((t) => t.name));
 
   if (MODE === "admin") {
-    check("tools/list count == 42", tools.length === 42, `got ${tools.length}`);
+    check("tools/list count == 43", tools.length === 43, `got ${tools.length}`);
     for (const n of [
       "place_order_plan",
       "place_order_commit",
-      "cash_transfer",
+      "cash_transfer_plan",
+      "cash_transfer_commit",
       "get_order_routing",
       "get_indicator",
     ]) {

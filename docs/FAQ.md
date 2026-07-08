@@ -99,7 +99,7 @@ netting account, use `close_position`. See
 
 ## How many tools are there, and why do the two modes differ?
 
-Admin mode exposes **42 tools and 4 resources**; client mode exposes **30 tools and
+Admin mode exposes **43 tools and 4 resources**; client mode exposes **30 tools and
 1 resource**. The difference is the scope each set of credentials should carry: admin mode
 adds server-wide capabilities (other accounts, groups, routing rules, cash transfers,
 liquidity connectors), while client mode is deliberately limited to what *you* can do with

@@ -95,21 +95,21 @@ test("client mode: tool errors carry the sign-in hint even for connection-level 
   assert.match(result.content[0].text, /Sign-in was rejected by the Trade Server/);
 });
 
-test("admin mode registers exactly 42 tools and 4 resources", () => {
+test("admin mode registers exactly 43 tools and 4 resources", () => {
   const server = new McpServer({ name: "t", version: "0" });
-  let toolCount = 0;
+  const names: string[] = [];
   let resourceCount = 0;
   const originalTool = server.tool.bind(server);
   const originalRegister = server.registerTool.bind(server);
   const originalResource = server.resource.bind(server);
   // Count BOTH registration APIs: legacy tool() and the registerTool() used by plan/commit tools.
-  (server as any).tool = (...args: unknown[]) => {
-    toolCount++;
-    return (originalTool as any)(...args);
+  (server as any).tool = (name: string, ...rest: unknown[]) => {
+    names.push(name);
+    return (originalTool as any)(name, ...rest);
   };
-  (server as any).registerTool = (...args: unknown[]) => {
-    toolCount++;
-    return (originalRegister as any)(...args);
+  (server as any).registerTool = (name: string, ...rest: unknown[]) => {
+    names.push(name);
+    return (originalRegister as any)(name, ...rest);
   };
   (server as any).resource = (...args: unknown[]) => {
     resourceCount++;
@@ -119,8 +119,15 @@ test("admin mode registers exactly 42 tools and 4 resources", () => {
   // Real WsClient with dummy credentials — never connected, so no socket is opened.
   const ws = new WsClient("http://127.0.0.1:9", new StaticCredentials("k", "s"));
   registerAdminTools(server, client, ws);
-  assert.equal(toolCount, 42);
+  assert.equal(names.length, 43);
   assert.equal(resourceCount, 4);
+  // cash_transfer is a money-mover: it must be gated as plan/commit, not a one-shot.
+  assert.ok(names.includes("cash_transfer_plan"), "cash_transfer_plan must be registered");
+  assert.ok(names.includes("cash_transfer_commit"), "cash_transfer_commit must be registered");
+  assert.ok(
+    !names.includes("cash_transfer"),
+    "the un-gated cash_transfer one-shot must be removed",
+  );
 });
 
 test("client health_check echoes mode and signed-in account", async () => {

@@ -52,8 +52,10 @@ import {
   getAccountInfo,
   getAllAccountsSchema,
   getAllAccounts,
-  cashTransferSchema,
-  cashTransfer,
+  cashTransferPlanSchema,
+  cashTransferPlan,
+  cashTransferCommitSchema,
+  cashTransferCommit,
   getTransferHistorySchema,
   getTransferHistory,
   getBalancesSchema,
@@ -292,11 +294,25 @@ export function registerAdminTools(
     toolHandler(() => getAllAccounts(restClient)),
   );
 
-  server.tool(
-    "cash_transfer",
-    "Make a cash deposit, withdrawal, or adjustment. Use positive amount for deposit, negative for withdrawal. Type 'Balance' is standard deposit/withdrawal. Supports: Balance, Credit, Fee, Adjustment, Bonus, Commission, Interest, Dividend, Tax.",
-    cashTransferSchema.shape,
-    toolHandler((params) => cashTransfer(restClient, params)),
+  server.registerTool(
+    "cash_transfer_plan",
+    {
+      description:
+        "STEP 1 of a cash transfer (deposit / withdrawal / adjustment) on a client account — preview WITHOUT executing. Validates and returns the account, amount, direction, and type plus a commitToken; if required details are missing (account, amount, type) it returns exactly what's needed. Positive amount = deposit, negative = withdrawal. Show the preview; only after the user confirms, call cash_transfer_commit. Nothing is moved.",
+      inputSchema: cashTransferPlanSchema.shape,
+      annotations: { readOnlyHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => cashTransferPlan(restClient, params)),
+  );
+  server.registerTool(
+    "cash_transfer_commit",
+    {
+      description:
+        "STEP 2 — execute the cash transfer previewed by cash_transfer_plan. Requires the commitToken from that preview. This moves REAL money irreversibly via an AI assistant — only call after the user has reviewed the preview and explicitly confirmed.",
+      inputSchema: cashTransferCommitSchema.shape,
+      annotations: { destructiveHint: true, openWorldHint: true },
+    },
+    toolHandler((params) => cashTransferCommit(restClient, params)),
   );
 
   server.tool(

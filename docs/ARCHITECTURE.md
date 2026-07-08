@@ -22,7 +22,7 @@ design decisions behind it all.
                                   v                                             v
                        +--------------------+                       +---------------------+
                        | register-admin.ts  |                       | register-client.ts  |
-                       | 42 tools           |                       | 30 tools            |
+                       | 43 tools           |                       | 30 tools            |
                        | 4 resources        |                       | 1 resource          |
                        +---------+----------+                       +----------+----------+
                                  |                                             |
@@ -66,7 +66,7 @@ Everything under `src/`:
 |---|---|
 | `index.ts` | Entry point: parse env config, construct the auth provider and clients for the selected mode, register tools, connect the stdio transport, log the startup line. |
 | `config.ts` | Environment-variable parsing: mode selection and inference, whitespace trimming, validation, and every startup error message. |
-| `register-admin.ts` | Registers the 42 admin tools and 4 MCP resources, wiring each tool name + description + schema to its implementation. |
+| `register-admin.ts` | Registers the 43 admin tools and 4 MCP resources, wiring each tool name + description + schema to its implementation. |
 | `register-client.ts` | Registers the 30 client tools and 1 MCP resource; exports `CLIENT_TOOL_COUNT`; wraps every tool so sign-in failure hints surface in tool errors. |
 | `tool-handler.ts` | Wraps each tool function for MCP: serializes results to JSON text, converts thrown errors into a structured `{ error, message }` result with `isError: true`. |
 | `rest-client.ts` | Signed REST client for `/api/v1`: header construction, HMAC signing, ETag caching (`If-None-Match` / `If-Match`), semantic error mapping (`ApiError`), 401 renew-and-retry (`withAuthRetry`), and the transport retry policy. |
@@ -183,7 +183,7 @@ input. See [Contributing](./CONTRIBUTING.md) for the policy.
 
 **One server, two modes.** Broker administrators and traders need different tools, different
 scoping, and different safety rails. Registering per mode (rather than one tool set with an
-"admin flag") means a trader's session physically does not contain `cash_transfer` or routing
+"admin flag") means a trader's session physically does not contain the `cash_transfer_plan`/`cash_transfer_commit` or routing
 tools, and no client tool even has an `accountId` parameter to misuse. The registration counts
 are pinned by tests.
 

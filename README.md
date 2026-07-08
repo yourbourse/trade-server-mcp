@@ -176,7 +176,7 @@ Full guide: **[Codex setup](docs/CODEX_SETUP.md)**.
 | Feature | Description |
 |---------|-------------|
 | **Two modes, one server** | **Client mode** for traders (scoped to your own account) and **admin mode** for broker operations (server-wide) — detected from your sign-in (or pinned with `YB_MODE`) |
-| **30 trader tools / 42 broker tools** | Task-shaped tools covering trading, account monitoring, market data, and (admin) server configuration, plus MCP resources for static context |
+| **30 trader tools / 43 broker tools** | Task-shaped tools covering trading, account monitoring, market data, and (admin) server configuration, plus MCP resources for static context |
 | **Live trading** | Market, Limit, Stop, StopLimit, and CloseBy orders with optional SL/TP; modify, cancel, partial close, flatten-everything composites |
 | **Account monitoring** | Balance, equity, margin, unrealized P/L, open positions, working orders, trade and transfer history — single calls or one-shot summaries |
 | **Market data & indicators** | Quotes, market depth, OHLCV candles, currency conversion; admin mode adds locally computed indicators (RSI, MACD, EMA, Bollinger Bands, and more) |
@@ -194,7 +194,7 @@ One process runs exactly one mode — the tool set is decided at startup from yo
 |---|---|---|
 | **Who it's for** | A trader with an account at a broker running a YourBourse Trade Server | The broker: operations and administration teams |
 | **Scope** | Your own account only — the session token *is* the scope, enforced by the server | Server-wide: every account, group, client, routing rule, and liquidity connector |
-| **Tools / resources** | 30 tools, 1 resource | 42 tools, 4 resources |
+| **Tools / resources** | 30 tools, 1 resource | 43 tools, 4 resources |
 | **Credentials** | `YB_LOGIN` + `YB_PASSWORD` (or a pre-issued token pair) | Manager `YB_LOGIN` + `YB_PASSWORD`, or `YB_API_KEY` + `YB_SECRET_KEY` from the server admin panel |
 | **Trading** | On your account; no account parameter exists | On behalf of any account via `accountId` |
 | **Extras** | Rate-limit visibility, scoped balances | Cash transfers, order routing management, indicators, L1/L2 over WebSocket |
@@ -294,7 +294,7 @@ everyone else.)
                     v                               v
          +--------------------+         +---------------------+
          | register-admin.ts  |         | register-client.ts  |
-         | 42 tools, 4 res.   |         | 30 tools, 1 res.    |
+         | 43 tools, 4 res.   |         | 30 tools, 1 res.    |
          +---------+----------+         +----------+----------+
                    |                               |
                    v                               v
@@ -337,7 +337,7 @@ trade-server-mcp/
 ├── src/
 │   ├── index.ts               # Entry point: config → mode → register → stdio transport
 │   ├── config.ts              # Env parsing, mode selection & inference
-│   ├── register-admin.ts      # Registers the 42 admin tools + 4 resources
+│   ├── register-admin.ts      # Registers the 43 admin tools + 4 resources
 │   ├── register-client.ts     # Registers the 30 client tools + 1 resource
 │   ├── tool-handler.ts        # Wraps tool results/errors for MCP
 │   ├── rest-client.ts         # Signed REST client (HMAC, retries, ETag, error mapping)

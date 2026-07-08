@@ -3,7 +3,7 @@
 The complete reference for every tool the Trade Server MCP exposes, in both modes:
 
 - **[Client mode](#client-mode-30-tools)** — 30 tools, all scoped to your own trading account.
-- **[Admin mode](#admin-mode-42-tools)** — 42 tools with server-wide scope, for broker
+- **[Admin mode](#admin-mode-43-tools)** — 43 tools with server-wide scope, for broker
   administrators.
 
 For each tool you'll find the description your AI sees (verbatim, as registered with the MCP
@@ -606,7 +606,7 @@ Client mode registers **1 MCP resource**:
 
 ---
 
-## Admin mode (42 tools)
+## Admin mode (43 tools)
 
 Admin-mode tools have **server-wide scope**: tools that act on an account take an `accountId`
 parameter, and read tools can query across all accounts. See [Admin Mode](./ADMIN_MODE.md) for
@@ -1004,7 +1004,7 @@ Example:
 }
 ```
 
-### Account (6 tools)
+### Account (7 tools)
 
 #### `get_account_state`
 
@@ -1050,14 +1050,16 @@ Example:
 {}
 ```
 
-#### `cash_transfer`
+#### `cash_transfer_plan`
 
-> Make a cash deposit, withdrawal, or adjustment. Use positive amount for deposit, negative for withdrawal. Type 'Balance' is standard deposit/withdrawal. Supports: Balance, Credit, Fee, Adjustment, Bonus, Commission, Interest, Dividend, Tax.
+> STEP 1 of a cash transfer — preview a deposit, withdrawal, or balance adjustment on an account WITHOUT moving money. Validates the request and returns a plain-language summary (target account, amount, direction, type) plus a single-use commitToken. Show the preview to the user; ONLY after they confirm, call cash_transfer_commit with that token. Use positive amount for deposit, negative for withdrawal. Type 'Balance' is standard deposit/withdrawal. Supports: Balance, Credit, Fee, Adjustment, Bonus, Commission, Interest, Dividend, Tax. Nothing is moved.
+
+Validates the transfer and returns a `preview` (summary naming the target account, amount, direction, and type) plus a single-use `commitToken`. **No money moves at this step.**
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `accountId` | number | Yes | Trading account ID |
-| `amount` | number | Yes | Transfer amount |
+| `amount` | number | Yes | Transfer amount (positive = deposit, negative = withdrawal) |
 | `type` | `"Balance"` \| `"Credit"` \| `"Fee"` \| `"Adjustment"` \| `"Bonus"` \| `"CreditBonus"` \| `"Commission"` \| `"Interest"` \| `"Dividend"` \| `"Tax"` | Yes | Transfer type (Balance = deposit/withdrawal, use negative amount for withdrawal) |
 | `currency` | string | No (default `"USD"`) | Currency or asset name |
 | `comment` | string | No | Transfer comment |
@@ -1071,6 +1073,24 @@ Example:
   "type": "Balance",
   "currency": "USD",
   "comment": "initial deposit"
+}
+```
+
+#### `cash_transfer_commit`
+
+> STEP 2 — execute the transfer previewed by cash_transfer_plan. Requires the commitToken from that preview; the transfer details were fixed at plan time and cannot be changed here. This moves REAL money on the account and is irreversible — only call after the user has reviewed the preview and explicitly confirmed.
+
+Executes the transfer previewed by `cash_transfer_plan`. Takes only the token; the transfer details (account, amount, direction, type) were fixed at plan time. **This moves real money and cannot be undone.**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `commitToken` | string | Yes | The commitToken returned by cash_transfer_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_d6e7f8a9-0b1c-4d2e-8f4a-5b6c7d8e9f0a"
 }
 ```
 
@@ -1461,7 +1481,7 @@ matter in practice:
   (`marginCheck: false`); client orders are always margin-checked by the server.
 
 - **Client-only tool:** `get_limits` (your session's API rate limits) exists only in client
-  mode. The 13 admin-only tools are listed in [Admin Mode](./ADMIN_MODE.md#admin-only-tools).
+  mode. The 14 admin-only tools are listed in [Admin Mode](./ADMIN_MODE.md#admin-only-tools).
 
 - **Resources:** client mode exposes 1 resource (`trade://symbols`, scoped to your account);
   admin mode exposes 4 (`trade://symbols`, `trade://groups`, `trade://accounts`,

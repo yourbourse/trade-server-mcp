@@ -64,7 +64,7 @@ modes, matching two kinds of users:
 
 **Broker administrator (admin mode).** You operate the Trade Server itself: you can see and
 manage every account, review and edit order routing, transfer cash, inspect liquidity
-connectors, and use the full market-data toolset — 42 tools with server-wide scope. You need
+connectors, and use the full market-data toolset — 43 tools with server-wide scope. You need
 either your **manager login and password** (`YB_LOGIN` + `YB_PASSWORD` — auto-detected, with
 an auto-refreshing session) or an
 **admin API key pair** (`YB_API_KEY` + `YB_SECRET_KEY`), which comes from your YourBourse server
@@ -118,7 +118,7 @@ For a deeper look at each persona, see [Admin Mode](./ADMIN_MODE.md) and
   click-by-click install for each host
 - [Configuration](./CONFIGURATION.md) — every environment variable, all config examples, every
   startup message
-- [Tools Reference](./TOOLS_REFERENCE.md) — all 30 client tools and 42 admin tools in detail
+- [Tools Reference](./TOOLS_REFERENCE.md) — all 30 client tools and 43 admin tools in detail
 - [Admin Mode](./ADMIN_MODE.md) — the broker administrator's guide
 - [Client Mode](./CLIENT_MODE.md) — the trader's guide
 - [Usage Examples](./USAGE_EXAMPLES.md) — realistic conversation patterns
