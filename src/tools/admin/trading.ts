@@ -471,7 +471,7 @@ export async function placeOrderPlan(
     takeProfit: params.takeProfit,
     marginCheck: params.marginCheck,
   });
-  const commitToken = issuePlan(params);
+  const commitToken = issuePlan(params, "place_order");
   return { preview, commitToken, disclosure: PLACE_ORDER_DISCLOSURE };
 }
 
@@ -483,7 +483,7 @@ export async function placeOrderCommit(
   client: RestClient,
   params: z.infer<typeof placeOrderCommitSchema>,
 ) {
-  return placeOrder(client, placeOrderSchema.parse(takeCommit(params.commitToken)));
+  return placeOrder(client, placeOrderSchema.parse(takeCommit(params.commitToken, "place_order")));
 }
 
 export const closePositionPlanSchema = z.object({
@@ -513,7 +513,7 @@ export async function closePositionPlan(
     positionId: params.positionId,
     quantity: params.quantity,
   });
-  const commitToken = issuePlan(params);
+  const commitToken = issuePlan(params, "close_position");
   return { preview, commitToken, disclosure: CLOSE_POSITION_DISCLOSURE };
 }
 
@@ -525,7 +525,10 @@ export async function closePositionCommit(
   client: RestClient,
   params: z.infer<typeof closePositionCommitSchema>,
 ) {
-  return closePosition(client, closePositionSchema.parse(takeCommit(params.commitToken)));
+  return closePosition(
+    client,
+    closePositionSchema.parse(takeCommit(params.commitToken, "close_position")),
+  );
 }
 
 export const closeByPlanSchema = z.object({
@@ -549,7 +552,7 @@ export async function closeByPlan(client: RestClient, params: z.infer<typeof clo
     positionId: params.positionId,
     positionById: params.positionById,
   });
-  const commitToken = issuePlan(params);
+  const commitToken = issuePlan(params, "close_by");
   return { preview, commitToken, disclosure: CLOSE_BY_DISCLOSURE };
 }
 
@@ -561,7 +564,7 @@ export async function closeByCommit(
   client: RestClient,
   params: z.infer<typeof closeByCommitSchema>,
 ) {
-  return closeBy(client, closeBySchema.parse(takeCommit(params.commitToken)));
+  return closeBy(client, closeBySchema.parse(takeCommit(params.commitToken, "close_by")));
 }
 
 export const closeAllPositionsPlanSchema = z.object({
@@ -584,7 +587,7 @@ export async function closeAllPositionsPlan(
     accountId: params.accountId,
     symbol: params.symbol,
   });
-  const commitToken = issuePlan(params);
+  const commitToken = issuePlan(params, "close_all_positions");
   return { preview, commitToken, disclosure: CLOSE_ALL_DISCLOSURE };
 }
 
@@ -596,7 +599,10 @@ export async function closeAllPositionsCommit(
   client: RestClient,
   params: z.infer<typeof closeAllPositionsCommitSchema>,
 ) {
-  return closeAllPositions(client, closeAllPositionsSchema.parse(takeCommit(params.commitToken)));
+  return closeAllPositions(
+    client,
+    closeAllPositionsSchema.parse(takeCommit(params.commitToken, "close_all_positions")),
+  );
 }
 
 // === FORCE DELETE ===

@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 // order's fill is at live market regardless, so a slightly older preview at commit is harmless.)
 export const PLAN_TTL_MS = 300_000;
 
-type Entry = { order: unknown; expiresAt: number };
+type Entry = { order: unknown; tool: string; expiresAt: number };
 
 const store = new Map<string, Entry>();
 
@@ -30,11 +30,15 @@ function sweepExpired(now: number): void {
  * The token is the confirm-before-execute safety boundary, so it is cryptographically random
  * (randomUUID) rather than a predictable counter+timestamp — an unguessable token cannot be
  * committed without first having seen the matching preview.
+ *
+ * `tool` binds the token to the action that issued it (e.g. "place_order"): takeCommit rejects a
+ * token presented to a *different* commit tool, so a preview can never be committed as another
+ * action (Zod would otherwise silently drop the extra fields and execute the wrong thing).
  */
-export function issuePlan(order: unknown, nowFn: () => number = Date.now): string {
+export function issuePlan(order: unknown, tool: string, nowFn: () => number = Date.now): string {
   sweepExpired(nowFn());
   const token = `plan_${randomUUID()}`;
-  store.set(token, { order, expiresAt: nowFn() + PLAN_TTL_MS });
+  store.set(token, { order, tool, expiresAt: nowFn() + PLAN_TTL_MS });
   return token;
 }
 
@@ -46,9 +50,23 @@ export function issuePlan(order: unknown, nowFn: () => number = Date.now): strin
  * model can self-correct a mistyped/mis-relayed token — WITHOUT auto-accepting (the token stays
  * the explicit-confirm contract: the user confirmed that exact preview).
  */
-export function takeCommit(token: string, nowFn: () => number = Date.now): unknown {
+export function takeCommit(
+  token: string,
+  expectedTool: string,
+  nowFn: () => number = Date.now,
+): unknown {
   sweepExpired(nowFn());
   const entry = store.get(token);
+  // Bind the token to the tool that issued it. A live token from a *different* *_plan must NOT be
+  // committable here: schemas like closeAllPositionsSchema have zero required fields, so Zod would
+  // silently accept another action's payload and execute the wrong thing (e.g. a place_order token
+  // → close every position). Reject WITHOUT consuming so the correct *_commit can still use it.
+  if (entry && entry.expiresAt > nowFn() && entry.tool !== expectedTool) {
+    throw new Error(
+      `This commitToken was issued by ${entry.tool}, not ${expectedTool} — ` +
+        `commit it with the matching tool, or re-run the correct *_plan preview.`,
+    );
+  }
   store.delete(token); // consume atomically: cannot double-commit even if the caller retries
   if (entry && entry.expiresAt > nowFn()) return entry.order;
 

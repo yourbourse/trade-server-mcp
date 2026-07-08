@@ -92,7 +92,7 @@ export async function placeOrderPlan(
     stopLoss: params.stopLoss,
     takeProfit: params.takeProfit,
   });
-  const commitToken = issuePlan(params);
+  const commitToken = issuePlan(params, "place_order");
   return { preview, commitToken, disclosure: PLACE_ORDER_DISCLOSURE };
 }
 
@@ -104,7 +104,7 @@ export async function placeOrderCommit(
   client: RestClient,
   params: z.infer<typeof placeOrderCommitSchema>,
 ) {
-  const raw = takeCommit(params.commitToken);
+  const raw = takeCommit(params.commitToken, "place_order");
   // DA fix #4: re-validate the stored order before executing (plan already gated completeness).
   const order = placeOrderSchema.parse(raw);
   return placeOrder(client, order);
@@ -444,7 +444,7 @@ export async function closePositionPlan(
     positionId: params.positionId,
     quantity: params.quantity,
   });
-  const commitToken = issuePlan(params);
+  const commitToken = issuePlan(params, "close_position");
   return { preview, commitToken, disclosure: CLOSE_POSITION_DISCLOSURE };
 }
 
@@ -456,7 +456,7 @@ export async function closePositionCommit(
   client: RestClient,
   params: z.infer<typeof closePositionCommitSchema>,
 ) {
-  const order = closePositionSchema.parse(takeCommit(params.commitToken));
+  const order = closePositionSchema.parse(takeCommit(params.commitToken, "close_position"));
   return closePosition(client, order);
 }
 
@@ -478,7 +478,7 @@ export async function closeByPlan(client: RestClient, params: z.infer<typeof clo
     positionId: params.positionId,
     positionById: params.positionById,
   });
-  const commitToken = issuePlan(params);
+  const commitToken = issuePlan(params, "close_by");
   return { preview, commitToken, disclosure: CLOSE_BY_DISCLOSURE };
 }
 
@@ -490,7 +490,7 @@ export async function closeByCommit(
   client: RestClient,
   params: z.infer<typeof closeByCommitSchema>,
 ) {
-  const order = closeBySchema.parse(takeCommit(params.commitToken));
+  const order = closeBySchema.parse(takeCommit(params.commitToken, "close_by"));
   return closeBy(client, order);
 }
 
@@ -506,7 +506,7 @@ export async function closeAllPositionsPlan(
 ) {
   // No required fields — a token is always issued; the disclosure names the blast radius.
   const preview = await buildOrderPreview(client, { action: "close_all", symbol: params.symbol });
-  const commitToken = issuePlan(params);
+  const commitToken = issuePlan(params, "close_all_positions");
   return { preview, commitToken, disclosure: CLOSE_ALL_DISCLOSURE };
 }
 
@@ -518,6 +518,8 @@ export async function closeAllPositionsCommit(
   client: RestClient,
   params: z.infer<typeof closeAllPositionsCommitSchema>,
 ) {
-  const order = closeAllPositionsSchema.parse(takeCommit(params.commitToken));
+  const order = closeAllPositionsSchema.parse(
+    takeCommit(params.commitToken, "close_all_positions"),
+  );
   return closeAllPositions(client, order);
 }
