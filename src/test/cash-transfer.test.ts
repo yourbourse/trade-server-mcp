@@ -57,3 +57,16 @@ test("cash_transfer_commit rejects a token issued by another tool (no cross-tool
   assert.equal(calls.length, 0, "a foreign token must not move cash");
   takeCommit(foreign, "place_order"); // clean up the shared store
 });
+
+test("cash_transfer_plan preview currency matches what will execute (empty string → USD)", async () => {
+  const { client } = fakeClient();
+  // cashTransfer() defaults an empty/absent currency to USD (params.currency || "USD"); the preview
+  // must agree, or it would show "" while the executed transfer uses USD.
+  const plan = (await cashTransferPlan(client, {
+    accountId: 100,
+    amount: 10,
+    type: "Balance",
+    currency: "",
+  })) as { preview: { currency: string } };
+  assert.equal(plan.preview.currency, "USD", "preview currency must match the executed default");
+});

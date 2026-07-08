@@ -108,7 +108,9 @@ export async function cashTransferPlan(
     direction:
       (params.amount ?? 0) < 0 ? "withdrawal (debit from account)" : "deposit (credit to account)",
     type: params.type,
-    currency: params.currency ?? "USD",
+    // Match cashTransfer()'s executor default (|| "USD") so an empty-string currency previews as
+    // exactly what will execute, not as "".
+    currency: params.currency || "USD",
     ...(params.comment ? { comment: params.comment } : {}),
   };
   const commitToken = issuePlan(params, "cash_transfer");
