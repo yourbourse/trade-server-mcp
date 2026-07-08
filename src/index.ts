@@ -35,7 +35,7 @@ async function main() {
 
   const registerAdmin = (provider: CredentialsProvider, managerAccount?: () => number | null) => {
     const restClient = new RestClient(config.baseUrl, provider, config.requestTimeoutMs);
-    const wsClient = new WsClient(config.baseUrl, provider);
+    const wsClient = new WsClient(config.baseUrl, provider, undefined, config.requestTimeoutMs);
     onShutdown.unshift(() => wsClient.disconnect());
     registerAdminTools(server, restClient, wsClient, managerAccount);
   };

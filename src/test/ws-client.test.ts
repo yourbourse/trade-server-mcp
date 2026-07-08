@@ -124,6 +124,45 @@ test("getSnapshot rejects when the subscribe is refused", async () => {
   client.disconnect();
 });
 
+test("connect() rejects if the handshake never completes (timeout)", async () => {
+  const sockets: FakeSocket[] = [];
+  const factory = (_url: string) => {
+    const s = new FakeSocket();
+    sockets.push(s);
+    return s as unknown as import("ws").WebSocket;
+  };
+  // 20ms connect timeout; the fake socket never emits open/close/error, so a black-holed handshake
+  // must self-reject instead of hanging forever.
+  const client = new WsClient("https://ts.local", new StaticCredentials("K", "S"), factory, 20);
+  activeClients.push(client);
+  await assert.rejects(() => client.connect(), /timed out/i);
+});
+
+test("concurrent connect() calls share one in-flight attempt (no second socket)", async () => {
+  const { client, sockets } = makeClient();
+  const p1 = client.connect();
+  const p2 = client.connect();
+  // Both calls must reuse the same in-flight attempt: exactly one socket is created. Without the
+  // guard the second connect() opens a second socket and overwrites this.ws, orphaning the first.
+  assert.equal(sockets.length, 1, "concurrent connects must not open a second socket");
+  sockets[0].emit("open");
+  await Promise.all([p1, p2]);
+  client.disconnect();
+});
+
+test("getSnapshot fails if the socket drops after a successful subscribe (not a silent partial)", async () => {
+  const { client, sockets } = await openClient();
+  // Long window so the fallback timer cannot fire during the test — the close must be what settles it.
+  const snap = client.getSnapshot("L1", { s: "EURUSD" }, { timeoutMs: 100 });
+  await tick();
+  const reqId = JSON.parse(sockets[0].sent.at(-1)!).reqId;
+  sockets[0].emit("message", JSON.stringify({ m: "subscribe", s: true, reqId })); // subscribe ack OK
+  await tick();
+  sockets[0].emit("close"); // connection drops mid-stream, after the ack
+  await assert.rejects(() => snap, /clos/i);
+  client.disconnect();
+});
+
 test("getSnapshot collects data and resolves on success", async () => {
   const { client, sockets } = await openClient();
   const snap = client.getSnapshot("L1", { s: "EURUSD" }, { timeoutMs: 50 });

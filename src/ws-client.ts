@@ -16,11 +16,20 @@ export class WsClient {
   private maxReconnectAttempts = 5;
   private reconnecting = false;
   private isShuttingDown = false;
+  // In-flight connect(), shared by concurrent callers so a single disconnected client can never open
+  // two sockets at once (which would orphan one, leaking listeners and spurious reconnects).
+  private connecting: Promise<void> | null = null;
+  // Bounds the handshake so a black-holed connection can't hang connect() forever.
+  private connectTimer: ReturnType<typeof setTimeout> | null = null;
+  // fail() callbacks for getSnapshot calls that are past their subscribe ack: a socket drop must
+  // reject them instead of letting them resolve with partial/empty data.
+  private snapshotFailers = new Set<(err: Error) => void>();
 
   constructor(
     private baseUrl: string,
     private provider: CredentialsProvider,
     private wsFactory: (url: string) => WebSocket = (url) => new WebSocket(url),
+    private connectTimeoutMs: number = 10_000,
   ) {}
 
   get isConnected(): boolean {
@@ -29,6 +38,9 @@ export class WsClient {
 
   async connect(): Promise<void> {
     if (this.connected) return;
+    // Single-flight: concurrent callers (e.g. a get_quotes fan-out on a fresh client) share one
+    // attempt instead of each opening a socket. Cleared in the finally once the attempt settles.
+    if (this.connecting) return this.connecting;
     this.isShuttingDown = false;
 
     // Anchored + case-insensitive: an uppercase scheme (e.g. "HTTPS://") passes config validation
@@ -36,22 +48,46 @@ export class WsClient {
     const wsUrl = this.baseUrl.replace(/^https:\/\//i, "wss://").replace(/^http:\/\//i, "ws://");
     const url = `${wsUrl}/ws/v1`;
 
-    return new Promise<void>((resolve, reject) => {
+    this.connecting = new Promise<void>((resolve, reject) => {
       let opened = false;
-      this.ws = this.wsFactory(url);
+      const ws = this.wsFactory(url);
+      this.ws = ws;
 
-      this.ws.on("open", () => {
+      const clearConnectTimer = () => {
+        if (this.connectTimer) {
+          clearTimeout(this.connectTimer);
+          this.connectTimer = null;
+        }
+      };
+
+      // Bound the handshake: a black-holed connection fires neither open nor close/error, so without
+      // this connect() would hang forever (the REST transport already bounds its calls this way).
+      this.connectTimer = setTimeout(() => {
+        if (opened) return;
+        this.connectTimer = null;
+        // Do NOT set opened=true: let the ensuing close handler take the "closed before connecting"
+        // path (reject is idempotent) so a timed-out attempt does not start a background reconnect.
+        reject(new Error(`WebSocket connect timed out after ${this.connectTimeoutMs}ms`));
+        try {
+          ws.close();
+        } catch {
+          /* best-effort: closing a half-open socket */
+        }
+      }, this.connectTimeoutMs);
+
+      ws.on("open", () => {
         opened = true;
+        clearConnectTimer();
         this.connected = true;
         this.startPingPong();
         resolve();
       });
 
-      this.ws.on("message", (data) => {
+      ws.on("message", (data) => {
         this.handleMessage(data.toString());
       });
 
-      this.ws.on("close", () => {
+      ws.on("close", () => {
         this.connected = false;
         this.stopPingPong();
         this.rejectPending(new Error("WebSocket closed"));
@@ -59,6 +95,7 @@ export class WsClient {
           // Closed before it ever opened (server refused, or disconnect mid-connect): settle the
           // connect() promise so callers awaiting connect()/ensureConnected() don't hang forever.
           opened = true;
+          clearConnectTimer();
           reject(new Error("WebSocket closed before connecting"));
           return;
         }
@@ -66,17 +103,24 @@ export class WsClient {
         this.attemptReconnect();
       });
 
-      this.ws.on("error", (err) => {
+      ws.on("error", (err) => {
         if (!opened) {
           opened = true;
+          clearConnectTimer();
           reject(err);
         }
       });
 
-      this.ws.on("ping", (data) => {
+      ws.on("ping", (data) => {
         this.ws?.pong(data);
       });
     });
+
+    try {
+      await this.connecting;
+    } finally {
+      this.connecting = null;
+    }
   }
 
   /** Ensure connected, auto-reconnect if needed */
@@ -119,6 +163,10 @@ export class WsClient {
 
   disconnect() {
     this.isShuttingDown = true;
+    if (this.connectTimer) {
+      clearTimeout(this.connectTimer);
+      this.connectTimer = null;
+    }
     this.stopPingPong();
     this.rejectPending(new Error("WebSocket disconnected"));
     this.subscriptionHandlers.clear();
@@ -133,6 +181,10 @@ export class WsClient {
   private rejectPending(err: Error) {
     for (const { reject } of this.pendingRequests.values()) reject(err);
     this.pendingRequests.clear();
+    // Snapshots past their subscribe ack are no longer in pendingRequests; fail them too so a socket
+    // drop mid-stream surfaces as an error rather than resolving with partial/empty data.
+    for (const fail of [...this.snapshotFailers]) fail(err);
+    this.snapshotFailers.clear();
   }
 
   private startPingPong() {
@@ -231,6 +283,7 @@ export class WsClient {
       let settled = false;
       const cleanup = () => {
         this.subscriptionHandlers.delete(reqId);
+        this.snapshotFailers.delete(fail);
         // unsubscribe is async, so a synchronous throw inside it surfaces as a rejected promise that
         // a try/catch here would NOT catch — swallow it with .catch to keep this best-effort.
         void this.unsubscribe(channel, payload, reqId).catch(() => {
@@ -253,6 +306,9 @@ export class WsClient {
         cleanup();
         reject(err instanceof Error ? err : new Error(String(err)));
       };
+      // Register so a socket drop after the subscribe ack (via rejectPending) fails this snapshot
+      // instead of leaving it to time out and resolve with partial data. cleanup() deregisters it.
+      this.snapshotFailers.add(fail);
 
       this.subscriptionHandlers.set(reqId, (data) => {
         results.push(data);
