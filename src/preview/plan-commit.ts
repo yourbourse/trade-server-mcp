@@ -36,9 +36,10 @@ function sweepExpired(now: number): void {
  * action (Zod would otherwise silently drop the extra fields and execute the wrong thing).
  */
 export function issuePlan(order: unknown, tool: string, nowFn: () => number = Date.now): string {
-  sweepExpired(nowFn());
+  const now = nowFn();
+  sweepExpired(now);
   const token = `plan_${randomUUID()}`;
-  store.set(token, { order, tool, expiresAt: nowFn() + PLAN_TTL_MS });
+  store.set(token, { order, tool, expiresAt: now + PLAN_TTL_MS });
   return token;
 }
 
@@ -55,20 +56,21 @@ export function takeCommit(
   expectedTool: string,
   nowFn: () => number = Date.now,
 ): unknown {
-  sweepExpired(nowFn());
+  const now = nowFn();
+  sweepExpired(now);
   const entry = store.get(token);
   // Bind the token to the tool that issued it. A live token from a *different* *_plan must NOT be
   // committable here: schemas like closeAllPositionsSchema have zero required fields, so Zod would
   // silently accept another action's payload and execute the wrong thing (e.g. a place_order token
   // → close every position). Reject WITHOUT consuming so the correct *_commit can still use it.
-  if (entry && entry.expiresAt > nowFn() && entry.tool !== expectedTool) {
+  if (entry && entry.expiresAt > now && entry.tool !== expectedTool) {
     throw new Error(
       `This commitToken was issued by ${entry.tool}, not ${expectedTool} — ` +
         `commit it with the matching tool, or re-run the correct *_plan preview.`,
     );
   }
   store.delete(token); // consume atomically: cannot double-commit even if the caller retries
-  if (entry && entry.expiresAt > nowFn()) return entry.order;
+  if (entry && entry.expiresAt > now) return entry.order;
 
   const pending = [...store.keys()];
   const hint = pending.length
