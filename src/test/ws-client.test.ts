@@ -138,6 +138,24 @@ test("connect() rejects if the handshake never completes (timeout)", async () =>
   await assert.rejects(() => client.connect(), /timed out/i);
 });
 
+test("a late open after a connect timeout does not connect the client or reconnect", async () => {
+  const sockets: FakeSocket[] = [];
+  const factory = (_url: string) => {
+    const s = new FakeSocket();
+    sockets.push(s);
+    return s as unknown as import("ws").WebSocket;
+  };
+  const client = new WsClient("https://ts.local", new StaticCredentials("K", "S"), factory, 20);
+  activeClients.push(client);
+  await assert.rejects(() => client.connect(), /timed out/i);
+  // A slow handshake fires "open" AFTER the timeout already rejected: it must be ignored, not flip
+  // the client to connected (callers already saw a rejection) or start a background reconnect.
+  sockets[0].emit("open");
+  await tick();
+  assert.equal(client.isConnected, false, "a late open must not connect the client");
+  assert.equal(sockets.length, 1, "a timed-out attempt must not create a reconnect socket");
+});
+
 test("concurrent connect() calls share one in-flight attempt (no second socket)", async () => {
   const { client, sockets } = makeClient();
   const p1 = client.connect();

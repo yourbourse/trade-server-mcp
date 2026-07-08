@@ -21,8 +21,9 @@ export class WsClient {
   private connecting: Promise<void> | null = null;
   // Bounds the handshake so a black-holed connection can't hang connect() forever.
   private connectTimer: ReturnType<typeof setTimeout> | null = null;
-  // fail() callbacks for getSnapshot calls that are past their subscribe ack: a socket drop must
-  // reject them instead of letting them resolve with partial/empty data.
+  // fail() callbacks for in-flight getSnapshot calls: a socket drop must reject them instead of
+  // letting a snapshot resolve with partial/empty data. Registered for the whole call — a pre-ack
+  // drop is also covered by pendingRequests, so this specifically catches a drop AFTER the ack.
   private snapshotFailers = new Set<(err: Error) => void>();
 
   constructor(
@@ -49,7 +50,11 @@ export class WsClient {
     const url = `${wsUrl}/ws/v1`;
 
     this.connecting = new Promise<void>((resolve, reject) => {
-      let opened = false;
+      // `settled` = the connect() promise resolved or rejected (gates late/duplicate events, incl. an
+      // "open" that arrives after the timeout already rejected). `established` = the socket actually
+      // opened, which alone permits an auto-reconnect on a later close.
+      let settled = false;
+      let established = false;
       const ws = this.wsFactory(url);
       this.ws = ws;
 
@@ -63,10 +68,9 @@ export class WsClient {
       // Bound the handshake: a black-holed connection fires neither open nor close/error, so without
       // this connect() would hang forever (the REST transport already bounds its calls this way).
       this.connectTimer = setTimeout(() => {
-        if (opened) return;
+        if (settled) return;
+        settled = true;
         this.connectTimer = null;
-        // Do NOT set opened=true: let the ensuing close handler take the "closed before connecting"
-        // path (reject is idempotent) so a timed-out attempt does not start a background reconnect.
         reject(new Error(`WebSocket connect timed out after ${this.connectTimeoutMs}ms`));
         try {
           ws.close();
@@ -76,7 +80,9 @@ export class WsClient {
       }, this.connectTimeoutMs);
 
       ws.on("open", () => {
-        opened = true;
+        if (settled) return; // a late open after a timeout/error must not flip us to connected
+        settled = true;
+        established = true;
         clearConnectTimer();
         this.connected = true;
         this.startPingPong();
@@ -91,21 +97,24 @@ export class WsClient {
         this.connected = false;
         this.stopPingPong();
         this.rejectPending(new Error("WebSocket closed"));
-        if (!opened) {
+        if (!settled) {
           // Closed before it ever opened (server refused, or disconnect mid-connect): settle the
           // connect() promise so callers awaiting connect()/ensureConnected() don't hang forever.
-          opened = true;
+          settled = true;
           clearConnectTimer();
           reject(new Error("WebSocket closed before connecting"));
           return;
         }
+        // Only an established connection that dropped may auto-reconnect — never a failed or
+        // timed-out attempt (whose close arrives after we already rejected).
+        if (!established) return;
         if (this.isShuttingDown) return; // explicit shutdown is terminal
         this.attemptReconnect();
       });
 
       ws.on("error", (err) => {
-        if (!opened) {
-          opened = true;
+        if (!settled) {
+          settled = true;
           clearConnectTimer();
           reject(err);
         }
@@ -306,8 +315,10 @@ export class WsClient {
         cleanup();
         reject(err instanceof Error ? err : new Error(String(err)));
       };
-      // Register so a socket drop after the subscribe ack (via rejectPending) fails this snapshot
-      // instead of leaving it to time out and resolve with partial data. cleanup() deregisters it.
+      // Register for the whole call so a socket drop (via rejectPending) fails this snapshot instead
+      // of leaving it to time out with partial data. A pre-ack drop is also caught by pendingRequests
+      // (the subscribe promise rejects → .catch(fail)); the settled guard makes the extra call a
+      // no-op. cleanup() deregisters it on settle.
       this.snapshotFailers.add(fail);
 
       this.subscriptionHandlers.set(reqId, (data) => {
