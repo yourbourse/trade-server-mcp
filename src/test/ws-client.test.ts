@@ -156,6 +156,24 @@ test("a late open after a connect timeout does not connect the client or reconne
   assert.equal(sockets.length, 1, "a timed-out attempt must not create a reconnect socket");
 });
 
+test("a stale socket's late close does not tear down a newer established connection", async () => {
+  const { client, sockets } = makeClient();
+  // Attempt 1 fails (closed before it opened) and is abandoned.
+  const first = client.connect();
+  sockets[0].emit("close");
+  await assert.rejects(() => first, /closed before connecting/i);
+  // Attempt 2 opens a fresh socket and establishes the connection.
+  const second = client.connect();
+  sockets[1].emit("open");
+  await second;
+  assert.equal(client.isConnected, true);
+  // The abandoned socket #0 emits a late close — a real socket's async close can land after a
+  // reconnect replaced this.ws. It must NOT touch the current connection.
+  sockets[0].emit("close");
+  assert.equal(client.isConnected, true, "a stale socket's close must not disconnect the client");
+  client.disconnect();
+});
+
 test("concurrent connect() calls share one in-flight attempt (no second socket)", async () => {
   const { client, sockets } = makeClient();
   const p1 = client.connect();

@@ -90,10 +90,16 @@ export class WsClient {
       });
 
       ws.on("message", (data) => {
+        if (this.ws !== ws) return; // ignore a stale socket a newer connect already replaced
         this.handleMessage(data.toString());
       });
 
       ws.on("close", () => {
+        // A previous (timed-out/abandoned) socket can emit close after a newer connect replaced
+        // this.ws — once this attempt has settled it must not touch the current connection. An
+        // UNSETTLED attempt still runs (e.g. disconnect() nulls this.ws mid-connect) so its
+        // connect() promise is settled instead of hanging.
+        if (this.ws !== ws && settled) return;
         this.connected = false;
         this.stopPingPong();
         this.rejectPending(new Error("WebSocket closed"));
@@ -121,7 +127,8 @@ export class WsClient {
       });
 
       ws.on("ping", (data) => {
-        this.ws?.pong(data);
+        if (this.ws !== ws) return; // ignore a stale socket a newer connect already replaced
+        ws.pong(data);
       });
     });
 
