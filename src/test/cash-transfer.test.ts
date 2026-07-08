@@ -67,6 +67,7 @@ test("cash_transfer_plan preview currency matches what will execute (empty strin
     amount: 10,
     type: "Balance",
     currency: "",
-  })) as { preview: { currency: string } };
+  })) as { preview: { currency: string }; commitToken: string };
   assert.equal(plan.preview.currency, "USD", "preview currency must match the executed default");
+  takeCommit(plan.commitToken, "cash_transfer"); // consume so the shared store is left clean
 });
