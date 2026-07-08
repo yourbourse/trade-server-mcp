@@ -1052,15 +1052,15 @@ Example:
 
 #### `cash_transfer_plan`
 
-> STEP 1 of a cash transfer — preview a deposit, withdrawal, or balance adjustment on an account WITHOUT moving money. Validates the request and returns a plain-language summary (target account, amount, direction, type) plus a single-use commitToken. Show the preview to the user; ONLY after they confirm, call cash_transfer_commit with that token. Use positive amount for deposit, negative for withdrawal. Type 'Balance' is standard deposit/withdrawal. Supports: Balance, Credit, Fee, Adjustment, Bonus, CreditBonus, Commission, Interest, Dividend, Tax. Nothing is moved.
+> STEP 1 of a cash transfer (deposit / withdrawal / adjustment) on a client account — preview WITHOUT executing. Validates and returns the account, amount, direction, and type plus a commitToken; if required details are missing (account, amount, type) it returns exactly what's needed. Positive amount = deposit, negative = withdrawal. Show the preview; only after the user confirms, call cash_transfer_commit. Nothing is moved.
 
-Validates the transfer and returns a `preview` (summary naming the target account, amount, direction, and type) plus a single-use `commitToken`. **No money moves at this step.**
+All parameters are optional at the plan step — if any required detail (account, amount, type) is missing, the tool reports exactly what's needed instead of guessing. On success it returns a `preview` (summary naming the target account, amount, direction, and type) and a single-use `commitToken`. **No money moves at this step.**
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
-| `accountId` | number | Yes | Trading account ID |
-| `amount` | number | Yes | Transfer amount (positive = deposit, negative = withdrawal) |
-| `type` | `"Balance"` \| `"Credit"` \| `"Fee"` \| `"Adjustment"` \| `"Bonus"` \| `"CreditBonus"` \| `"Commission"` \| `"Interest"` \| `"Dividend"` \| `"Tax"` | Yes | Transfer type (Balance = deposit/withdrawal, use negative amount for withdrawal) |
+| `accountId` | number | No | Trading account ID |
+| `amount` | number | No | Transfer amount (positive = deposit, negative = withdrawal) |
+| `type` | `"Balance"` \| `"Credit"` \| `"Fee"` \| `"Adjustment"` \| `"Bonus"` \| `"CreditBonus"` \| `"Commission"` \| `"Interest"` \| `"Dividend"` \| `"Tax"` | No | Transfer type (Balance = deposit/withdrawal) |
 | `currency` | string | No (default `"USD"`) | Currency or asset name |
 | `comment` | string | No | Transfer comment |
 
@@ -1078,9 +1078,9 @@ Example:
 
 #### `cash_transfer_commit`
 
-> STEP 2 — execute the transfer previewed by cash_transfer_plan. Requires the commitToken from that preview; the transfer details were fixed at plan time and cannot be changed here. This moves REAL money on the account and is irreversible — only call after the user has reviewed the preview and explicitly confirmed.
+> STEP 2 — execute the cash transfer previewed by cash_transfer_plan. Requires the commitToken from that preview. This moves REAL money irreversibly via an AI assistant — only call after the user has reviewed the preview and explicitly confirmed.
 
-Executes the transfer previewed by `cash_transfer_plan`. Takes only the token; the transfer details (account, amount, direction, type) were fixed at plan time. **This moves real money and cannot be undone.**
+Executes the transfer previewed by `cash_transfer_plan`. Takes only the token; the transfer details (account, amount, direction, type) were fixed at plan time and cannot be changed here. **This moves real money and cannot be undone.**
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
