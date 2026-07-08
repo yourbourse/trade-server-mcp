@@ -1052,7 +1052,7 @@ Example:
 
 #### `cash_transfer_plan`
 
-> STEP 1 of a cash transfer — preview a deposit, withdrawal, or balance adjustment on an account WITHOUT moving money. Validates the request and returns a plain-language summary (target account, amount, direction, type) plus a single-use commitToken. Show the preview to the user; ONLY after they confirm, call cash_transfer_commit with that token. Use positive amount for deposit, negative for withdrawal. Type 'Balance' is standard deposit/withdrawal. Supports: Balance, Credit, Fee, Adjustment, Bonus, Commission, Interest, Dividend, Tax. Nothing is moved.
+> STEP 1 of a cash transfer — preview a deposit, withdrawal, or balance adjustment on an account WITHOUT moving money. Validates the request and returns a plain-language summary (target account, amount, direction, type) plus a single-use commitToken. Show the preview to the user; ONLY after they confirm, call cash_transfer_commit with that token. Use positive amount for deposit, negative for withdrawal. Type 'Balance' is standard deposit/withdrawal. Supports: Balance, Credit, Fee, Adjustment, Bonus, CreditBonus, Commission, Interest, Dividend, Tax. Nothing is moved.
 
 Validates the transfer and returns a `preview` (summary naming the target account, amount, direction, and type) plus a single-use `commitToken`. **No money moves at this step.**
 
