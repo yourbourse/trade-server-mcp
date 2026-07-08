@@ -65,8 +65,9 @@ export function takeCommit(
   // → close every position). Reject WITHOUT consuming so the correct *_commit can still use it.
   if (entry && entry.expiresAt > now && entry.tool !== expectedTool) {
     throw new Error(
-      `This commitToken was issued by ${entry.tool}, not ${expectedTool} — ` +
-        `commit it with the matching tool, or re-run the correct *_plan preview.`,
+      `This commitToken was issued by ${entry.tool}_plan, so it can only be committed with ` +
+        `${entry.tool}_commit — not ${expectedTool}_commit. To ${expectedTool} instead, run ` +
+        `${expectedTool}_plan first to get a matching token.`,
     );
   }
   // Consume atomically: a matching (or missing/expired) token cannot double-commit even on retry.
