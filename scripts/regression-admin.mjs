@@ -130,14 +130,15 @@ try {
 
     const state = await request(4, "tools/call", { name: "get_account_state", arguments: {} });
     const stateText = toolText(state);
-    const hintRe = /CLIENT \(public\) API port/;
+    // Matches the current sign-in-failure hint from authFailureHint() (rewritten in v2.2.0).
+    const hintRe = /Sign-in was rejected by the Trade Server/;
     check("get_account_state isError (old server expected)", state.result?.isError === true);
-    check("get_account_state result contains server-version hint", hintRe.test(stateText));
+    check("get_account_state result contains sign-in-failure hint", hintRe.test(stateText));
     console.log("--- observed tool-result text ---");
     console.log(stateText);
     console.log("--- observed stderr (startup hint) ---");
     console.log(stderrBuf.trim());
-    check("stderr contains server-version hint", hintRe.test(stderrBuf));
+    check("stderr contains sign-in-failure hint", hintRe.test(stderrBuf));
   }
 } catch (err) {
   failures++;

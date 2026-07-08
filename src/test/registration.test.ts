@@ -77,7 +77,7 @@ test("client mode: tool errors carry the sign-in hint even for connection-level 
     handlers.set(name, handler);
   };
   const hint =
-    "The Trade Server rejected the sign-in request — check that YB_BASE_URL points to the CLIENT (public) API port: it is a different port from the admin API on the same server. If the port is right, the server version may predate the public client API; ask your broker.";
+    "Sign-in was rejected by the Trade Server (HTTP 400) — usually an invalid request parameter or wrong endpoint.";
   const fakeAuth = { authFailureHint: () => hint } as never;
   const fakeClient = {
     post: async () => {
@@ -92,7 +92,7 @@ test("client mode: tool errors carry the sign-in hint even for connection-level 
   const result = await handlers.get("get_account_state")!({});
   assert.equal(result.isError, true);
   assert.match(result.content[0].text, /fetch failed/);
-  assert.match(result.content[0].text, /CLIENT \(public\) API port/);
+  assert.match(result.content[0].text, /Sign-in was rejected by the Trade Server/);
 });
 
 test("admin mode registers exactly 42 tools and 4 resources", () => {
