@@ -69,7 +69,9 @@ export function takeCommit(
         `commit it with the matching tool, or re-run the correct *_plan preview.`,
     );
   }
-  store.delete(token); // consume atomically: cannot double-commit even if the caller retries
+  // Consume atomically: a matching (or missing/expired) token cannot double-commit even on retry.
+  // A wrong-tool mismatch already returned above WITHOUT reaching here, so its token survives.
+  store.delete(token);
   if (entry && entry.expiresAt > now) return entry.order;
 
   const pending = [...store.keys()];
