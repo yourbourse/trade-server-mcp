@@ -3,7 +3,7 @@
   "version": "2.2.0",
   "description": "MCP server for the YourBourse Trade Server — trader and manager (admin) modes, auto-detected from your sign-in",
   "author": "YourBourse",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "Apache-2.0",
   "private": true,
   "repository": {
     "type": "git",

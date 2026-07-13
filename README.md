@@ -8,7 +8,7 @@
 [![Version](https://img.shields.io/badge/version-2.2.0-blue)](https://github.com/yourbourse/trade-server-mcp/blob/main/CHANGELOG.md)
 [![MCP](https://img.shields.io/badge/MCP-Model%20Context%20Protocol-7C3AED)](https://modelcontextprotocol.io/)
 ![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
-![License](https://img.shields.io/badge/License-Proprietary-red.svg)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 <br>
 
@@ -396,8 +396,7 @@ Exit code 0 means all checks passed.
 
 ## License
 
-Copyright (c) 2025-2026 YourBourse. All rights reserved.
+Licensed under the Apache License, Version 2.0. Copyright 2026 YourBourse.
 
-This software is proprietary and confidential. Unauthorized copying, distribution,
-modification, or use of this software, via any medium, is strictly prohibited. See
-[LICENSE](LICENSE) for terms.
+You may use, modify, and distribute this software under the terms of the license.
+See [LICENSE](LICENSE) for the full text.
