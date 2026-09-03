@@ -22,7 +22,7 @@ design decisions behind it all.
                                   v                                             v
                        +--------------------+                       +---------------------+
                        | register-admin.ts  |                       | register-client.ts  |
-                       | 43 tools           |                       | 30 tools            |
+                       | 132 tools          |                       | 30 tools            |
                        | 4 resources        |                       | 1 resource          |
                        +---------+----------+                       +----------+----------+
                                  |                                             |
@@ -66,7 +66,8 @@ Everything under `src/`:
 |---|---|
 | `index.ts` | Entry point: parse env config, construct the auth provider and clients for the selected mode, register tools, connect the stdio transport, log the startup line. |
 | `config.ts` | Environment-variable parsing: mode selection and inference, whitespace trimming, validation, and every startup error message. |
-| `register-admin.ts` | Registers the 43 admin tools and 4 MCP resources, wiring each tool name + description + schema to its implementation. |
+| `tools/admin/paging.ts` | Cursor pagination for the admin collection endpoints — walks `nextToken` to the end so a tool never acts on, counts, or reports just the first page. |
+| `register-admin.ts` | Registers the 132 admin tools and 4 MCP resources, wiring each tool name + description + schema to its implementation. |
 | `register-client.ts` | Registers the 30 client tools and 1 MCP resource; exports `CLIENT_TOOL_COUNT`; wraps every tool so sign-in failure hints surface in tool errors. |
 | `tool-handler.ts` | Wraps each tool function for MCP: serializes results to JSON text, converts thrown errors into a structured `{ error, message }` result with `isError: true`. |
 | `rest-client.ts` | Signed REST client for `/api/v1`: header construction, HMAC signing, ETag caching (`If-None-Match` / `If-Match`), semantic error mapping (`ApiError`), 401 renew-and-retry (`withAuthRetry`), and the transport retry policy. |
@@ -74,13 +75,17 @@ Everything under `src/`:
 | `auth/admin-auth.ts` | `generateSignature` (HMAC-SHA256, base64url), the `CredentialsProvider` interface, and `StaticCredentials` for static key pairs. |
 | `auth/client-auth.ts` | `ClientAuth`: login-based sign-in via `POST /authorize`, token rotation via `/refresh`, auto-refresh scheduling at 80% of token lifetime (single-flight), 401 recovery hook, and targeted sign-in failure hints. |
 | `auth/detect-mode.ts` | `detectManager`: the startup role probe for login/password sign-ins — calls `GET /admin/managers/get/{account}`; 200 means manager (admin tools), any failure means trader (fail-closed to client mode). |
-| `tools/admin/trading.ts` | Admin trading tools: order placement/modification/cancel, positions, close composites, history, account summary. The four money-movers (place order, close position, close-by, close all) are exposed as `*_plan` + `*_commit` pairs (confirm-before-execute). |
-| `tools/admin/account.ts` | Admin account tools: account state/info, all accounts, cash transfers, transfer history, balances. |
-| `tools/admin/market-data.ts` | Admin market data: WS quotes and depth, symbols, candles, conversion rate, locally computed indicators, health check. |
-| `tools/admin/config.ts` | Admin configuration tools: groups, clients, order routing (get/set/add/remove), liquidity connectors, symbol details. |
+| `tools/admin/trading.ts` | Admin trading tools: order placement/modification/cancel, positions, close composites, history, account summary, and position/trade record maintenance (back-office corrections as `*_plan` + `*_commit` pairs). The four money-movers (place order, close position, close-by, close all) are exposed as `*_plan` + `*_commit` pairs (confirm-before-execute). |
+| `tools/admin/account.ts` | Admin account tools: account state/info, all accounts, cash transfers, transfer history, balances, single-transfer and margin-call lookups, and the password operations (`set_account_password`, `change_my_password`). |
+| `tools/admin/market-data.ts` | Admin market data: WS quotes and depth, symbols, candles, conversion rate, locally computed indicators, health check, and chart-history maintenance (single and bulk candle writes/deletes). |
+| `tools/admin/config.ts` | Admin configuration tools: order routing (get/set/add/remove) and full create/edit/delete lifecycle for symbols, groups, trading accounts, clients, liquidity connectors, holidays, and managers, plus `get_tokens`. Destructive writes are `*_plan` + `*_commit` pairs. |
+| `tools/admin/resource-write.ts` | Generic read-modify-write helpers backing the resource CRUD tools: `planResourceEdit` / `planResourceDelete` / `planResourceCreate` / `commitResourceWrite`, plus `makeResourceTools`, which generates each resource's plan/commit pair from its spec. Pairs every write with the ETag of the exact read it came from (`If-Match`), strips server-managed fields, masks secret fields in previews, forces `id`/`version` 0 on create, and never transport-retries a commit. |
 | `tools/client/trading.ts` | Client trading tools: place/modify/cancel orders, SL/TP, close composites, working orders, history. The four money-movers (place order, close position, close-by, close all) are exposed as `*_plan` + `*_commit` pairs (confirm-before-execute). |
 | `tools/client/account.ts` | Client account tools (5): account state, summary, balances, transfer history, rate limits. |
 | `tools/client/market-data.ts` | Client market data (7 + health check): quotes, depth, symbols, symbol details, candles, conversion rate. |
+| `tools/admin/bulk.ts` | Bulk (batch) operations over whole record classes: `bulk_update_*` / `bulk_delete_*` with selection by ids or name glob, plus per-resource specs for the batch endpoints (bare-array bodies, no `If-Match`). |
+| `tools/admin/lookup.ts` | Single-record lookup with a `/query` fallback for servers that do not serve the documented `get/{id}` routes. |
+| `tools/admin/filters.ts` | Builds the wire `TradingAccountFilter` (`accounts` / `groups` / `groupMasks`) from the tools' friendly filter parameters. |
 | `preview/plan-commit.ts` | Single-use commit-token store backing the preview/commit flow: `issuePlan()` stashes a validated order and returns a short opaque token (5-minute TTL); `takeCommit()` consumes it exactly once, so a retried commit can never double-fill. |
 | `preview/order-preview.ts` | Order preview builder: turns a planned order into a plain-language summary plus best-effort live quote and free margin (degrades gracefully if the data endpoints blip). |
 | `validation.ts` | Parameter-completeness messages: when a `*_plan` request is missing required fields, returns exactly what's needed (with valid options) instead of guessing or surfacing a raw schema error. |

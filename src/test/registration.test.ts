@@ -95,7 +95,7 @@ test("client mode: tool errors carry the sign-in hint even for connection-level 
   assert.match(result.content[0].text, /Sign-in was rejected by the Trade Server/);
 });
 
-test("admin mode registers exactly 43 tools and 4 resources", () => {
+test("admin mode registers exactly 132 tools and 4 resources", () => {
   const server = new McpServer({ name: "t", version: "0" });
   const names: string[] = [];
   let resourceCount = 0;
@@ -119,7 +119,7 @@ test("admin mode registers exactly 43 tools and 4 resources", () => {
   // Real WsClient with dummy credentials — never connected, so no socket is opened.
   const ws = new WsClient("http://127.0.0.1:9", new StaticCredentials("k", "s"));
   registerAdminTools(server, client, ws);
-  assert.equal(names.length, 43);
+  assert.equal(names.length, 132);
   assert.equal(resourceCount, 4);
   // cash_transfer is a money-mover: it must be gated as plan/commit, not a one-shot.
   assert.ok(names.includes("cash_transfer_plan"), "cash_transfer_plan must be registered");

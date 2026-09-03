@@ -112,20 +112,22 @@ export class RestClient {
     }
   }
 
-  private async doGet<T>(path: string): Promise<T> {
+  private async doGet<T>(path: string): Promise<{ data: T; etag: string | null }> {
     const url = `${this.baseUrl}/api/v1${path}`;
     const headers = this.buildHeaders("GET");
 
-    const etag = this.etags.get(path);
-    if (etag) {
-      headers["If-None-Match"] = etag;
-    }
+    // NOTE: deliberately no If-None-Match. Response bodies are not cached, so a 304 carries no
+    // data and can only be surfaced as an error — which is exactly what happened whenever the same
+    // resource was read twice in one session (e.g. read routing, then read it again before
+    // editing). ETags are still recorded below, because writes need them for If-Match.
 
     try {
       const res = await this.fetchWithTimeout(url, { method: "GET", headers });
 
+      // A 304 should now be impossible (no conditional request is sent); if a proxy manufactures
+      // one anyway, surface it as a real error rather than returning an empty body as data.
       if (res.status === 304) {
-        throw new Error("Not modified (304)");
+        throw new Error("Not modified (304): the server answered a request we did not condition");
       }
 
       if (!res.ok) {
@@ -138,7 +140,10 @@ export class RestClient {
         this.etags.set(path, newEtag);
       }
 
-      return (await res.json()) as T;
+      // The ETag is returned alongside the body so callers can pair a version with the exact
+      // response it came from. Reading it back out of the per-path cache instead leaves a window
+      // where a concurrent read of the same resource overwrites it between the two steps.
+      return { data: (await res.json()) as T, etag: newEtag };
     } catch (err) {
       if (this.isTimeout(err)) throw this.timeoutApiError("GET", path);
       throw err;
@@ -241,6 +246,15 @@ export class RestClient {
   }
 
   async get<T = unknown>(path: string): Promise<T> {
+    return (await this.withAuthRetry(() => this.doGet<T>(path))).data;
+  }
+
+  /**
+   * Like get(), but also returns the ETag carried by that exact response. Use this when the value
+   * will be written back with If-Match: it ties the version to the body it was read with, instead
+   * of to whatever the shared per-path cache happens to hold by the time the write is prepared.
+   */
+  async getWithEtag<T = unknown>(path: string): Promise<{ data: T; etag: string | null }> {
     return this.withAuthRetry(() => this.doGet<T>(path));
   }
 
@@ -279,6 +293,13 @@ export class RestClient {
   }
 
   /** Get stored etag */
+  /**
+   * The ETag currently cached for a path.
+   *
+   * Kept as part of the ETag contract (and asserted by the tests) even though the write paths now
+   * carry the version through {@link getWithEtag} instead of reading it back out of this cache —
+   * reading it back was the race fixed in this release.
+   */
   getEtag(path: string): string | undefined {
     return this.etags.get(path);
   }

@@ -95,7 +95,7 @@ test("admin closePosition does NOT retry the closing order on a connection error
   globalThis.fetch = (async (url: any) => {
     if (String(url).includes("/positions/query")) {
       return new Response(
-        JSON.stringify({ positions: [{ id: 5, s: "EURUSD", S: "buy", q: 0.1 }] }),
+        JSON.stringify({ positions: [{ id: 5, A: 1, s: "EURUSD", S: "buy", q: 0.1 }] }),
         { status: 200 },
       );
     }
@@ -113,8 +113,8 @@ test("admin closeBy does NOT retry the closing order on a connection error", asy
       return new Response(
         JSON.stringify({
           positions: [
-            { id: 5, s: "EURUSD", S: "buy", q: 0.1 },
-            { id: 6, s: "EURUSD", S: "sell", q: 0.1 },
+            { id: 5, A: 1, s: "EURUSD", S: "buy", q: 0.1 },
+            { id: 6, A: 1, s: "EURUSD", S: "sell", q: 0.1 },
           ],
         }),
         { status: 200 },

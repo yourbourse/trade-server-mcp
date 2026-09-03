@@ -3,10 +3,65 @@ import { RestClient } from "../../rest-client.js";
 import { issuePlan, takeCommit } from "../../preview/plan-commit.js";
 import { buildOrderPreview } from "../../preview/order-preview.js";
 import { completenessMessage, orderPriceCompleteness } from "../../validation.js";
+import { fetchRecord } from "./lookup.js";
+import { queryAllPages } from "./paging.js";
 
 // Order placement is non-idempotent: a connection reset does not prove the
 // server never received the order, so a transport-level retry could fill twice.
 const NO_TRANSPORT_RETRY = { retryOnConnectionError: false };
+
+// The book endpoints are cursor-paginated (see paging.ts). A tool that reads one page reports
+// success on a partial book — "closed 12, none left" with the rest still open — so every read
+// that is counted, acted on, or shown as a complete answer walks all the pages.
+interface BookPosition {
+  id: number;
+  A: number;
+  s: string;
+  S: string;
+  q: number;
+}
+interface BookOrder {
+  id: number;
+  A: number;
+  s: string;
+  st: string;
+}
+
+const queryPositions = (client: RestClient, body: Record<string, unknown>) =>
+  queryAllPages<BookPosition & Record<string, unknown>>(client, {
+    path: "/admin/positions/query",
+    method: "POST",
+    body,
+    collectionKey: "positions",
+  });
+
+const queryOrders = (client: RestClient, body: Record<string, unknown>) =>
+  queryAllPages<BookOrder & Record<string, unknown>>(client, {
+    path: "/admin/orders/active",
+    method: "POST",
+    body,
+    collectionKey: "orders",
+  });
+
+/**
+ * Keep only the rows that belong to `accountId`.
+ *
+ * The account filter is applied server-side, but a build that ignores it returns EVERY account's
+ * records (verified live on the bare-{ A } filter this branch replaced), and these rows are used to
+ * close positions and cancel orders. A row with no `A` at all means the wire shape is not what this
+ * guard assumes — fail loudly rather than silently filter the whole book away, which would make a
+ * close-all report success having done nothing.
+ */
+function ownedBy<T extends { A?: unknown }>(rows: T[], accountId: number, what: string): T[] {
+  const missing = rows.filter((r) => r.A === undefined || r.A === null);
+  if (missing.length > 0) {
+    throw new Error(
+      `Cannot verify ownership: ${missing.length} of ${rows.length} ${what} came back without an ` +
+        `account field, so they cannot be matched against account ${accountId}. Refusing to act.`,
+    );
+  }
+  return rows.filter((r) => Number(r.A) === Number(accountId));
+}
 
 export const placeOrderSchema = z.object({
   accountId: z.number().describe("Trading account ID (login)"),
@@ -87,10 +142,16 @@ export async function getWorkingOrders(
   params: z.infer<typeof getWorkingOrdersSchema>,
 ) {
   const body: Record<string, unknown> = {};
-  if (params.accountId !== undefined) body.A = params.accountId;
-  if (params.symbol !== undefined) body.s = params.symbol;
+  // The server expects `accountFilter` / `symbolNames`; a bare { A, s } filter is SILENTLY IGNORED
+  // and the endpoint then returns EVERY record (verified live), so the wrong rows look like a match.
+  if (params.accountId !== undefined) body.accountFilter = { accounts: [params.accountId] };
+  if (params.symbol !== undefined) body.symbolNames = [params.symbol];
 
-  return client.post("/admin/orders/active", body);
+  const orders = await queryOrders(client, body);
+  return {
+    orders:
+      params.accountId === undefined ? orders : ownedBy(orders, params.accountId, "working orders"),
+  };
 }
 
 export const getOpenPositionsSchema = z.object({
@@ -103,10 +164,18 @@ export async function getOpenPositions(
   params: z.infer<typeof getOpenPositionsSchema>,
 ) {
   const body: Record<string, unknown> = {};
-  if (params.accountId !== undefined) body.A = params.accountId;
-  if (params.symbol !== undefined) body.s = params.symbol;
+  // The server expects `accountFilter` / `symbolNames`; a bare { A, s } filter is SILENTLY IGNORED
+  // and the endpoint then returns EVERY record (verified live), so the wrong rows look like a match.
+  if (params.accountId !== undefined) body.accountFilter = { accounts: [params.accountId] };
+  if (params.symbol !== undefined) body.symbolNames = [params.symbol];
 
-  return client.post("/admin/positions/query", body);
+  const positions = await queryPositions(client, body);
+  return {
+    positions:
+      params.accountId === undefined
+        ? positions
+        : ownedBy(positions, params.accountId, "open positions"),
+  };
 }
 
 export const closePositionSchema = z.object({
@@ -123,14 +192,18 @@ export async function closePosition(
   client: RestClient,
   params: z.infer<typeof closePositionSchema>,
 ) {
-  // Get position details first to know symbol and side
-  const result = (await client.post("/admin/positions/query", {
-    A: params.accountId,
-  })) as { positions: Array<{ id: number; s: string; S: string; q: number }> };
+  // Get position details first to know symbol and side. Scope with accountFilter — a bare
+  // { A } body is silently ignored server-side and would return EVERY account's positions —
+  // and double-check ownership before acting, so a stale/foreign id can never be closed.
+  const owned = ownedBy(
+    await queryPositions(client, { accountFilter: { accounts: [params.accountId] } }),
+    params.accountId,
+    "open positions",
+  );
 
-  const position = (result.positions || []).find((p) => p.id === params.positionId);
+  const position = owned.find((p) => p.id === params.positionId);
   if (!position) {
-    throw new Error(`Position ${params.positionId} not found`);
+    throw new Error(`Position ${params.positionId} not found on account ${params.accountId}`);
   }
 
   // Place opposite market order to close
@@ -187,8 +260,10 @@ export async function getTradeHistory(
   params: z.infer<typeof getTradeHistorySchema>,
 ) {
   const body: Record<string, unknown> = {};
-  if (params.accountId !== undefined) body.A = params.accountId;
-  if (params.symbol !== undefined) body.s = params.symbol;
+  // The server expects `accountFilter` / `symbolNames`; a bare { A, s } filter is SILENTLY IGNORED
+  // and the endpoint then returns EVERY record (verified live), so the wrong rows look like a match.
+  if (params.accountId !== undefined) body.accountFilter = { accounts: [params.accountId] };
+  if (params.symbol !== undefined) body.symbolNames = [params.symbol];
   if (params.from !== undefined) body.from = params.from;
   if (params.to !== undefined) body.to = params.to;
   if (params.limit !== undefined) body.limit = params.limit;
@@ -209,8 +284,10 @@ export async function getOrderHistory(
   params: z.infer<typeof getOrderHistorySchema>,
 ) {
   const body: Record<string, unknown> = {};
-  if (params.accountId !== undefined) body.A = params.accountId;
-  if (params.symbol !== undefined) body.s = params.symbol;
+  // The server expects `accountFilter` / `symbolNames`; a bare { A, s } filter is SILENTLY IGNORED
+  // and the endpoint then returns EVERY record (verified live), so the wrong rows look like a match.
+  if (params.accountId !== undefined) body.accountFilter = { accounts: [params.accountId] };
+  if (params.symbol !== undefined) body.symbolNames = [params.symbol];
   if (params.from !== undefined) body.from = params.from;
   if (params.to !== undefined) body.to = params.to;
   if (params.limit !== undefined) body.limit = params.limit;
@@ -252,12 +329,15 @@ export async function cancelAllOrders(
   client: RestClient,
   params: z.infer<typeof cancelAllOrdersSchema>,
 ) {
-  // Always fetch all orders for the account (server-side symbol filter is unreliable)
-  const result = (await client.post("/admin/orders/active", { A: params.accountId })) as {
-    orders: Array<{ id: number; s: string; st: string }>;
-  };
-
-  let orders = result.orders || [];
+  // Scope with accountFilter (a bare { A } body is silently ignored server-side and would
+  // return EVERY account's orders); the symbol filter stays client-side.
+  // Ownership belt-and-braces: this loop DELETES every order it sees, so never act on a
+  // record that does not belong to the requested account, whatever the server returned.
+  let orders = ownedBy(
+    await queryOrders(client, { accountFilter: { accounts: [params.accountId] } }),
+    params.accountId,
+    "working orders",
+  );
 
   // Client-side symbol filter
   if (params.symbol) {
@@ -271,7 +351,11 @@ export async function cancelAllOrders(
   const results: Array<{ orderId: number; symbol: string; status: string }> = [];
   for (const order of orders) {
     try {
-      await client.post("/admin/orders/delete", { A: params.accountId, id: order.id });
+      await client.post(
+        "/admin/orders/delete",
+        { A: params.accountId, id: order.id },
+        NO_TRANSPORT_RETRY,
+      );
       results.push({ orderId: order.id, symbol: order.s, status: "cancelled" });
     } catch (e) {
       results.push({
@@ -298,12 +382,15 @@ export async function closeAllPositions(
   client: RestClient,
   params: z.infer<typeof closeAllPositionsSchema>,
 ) {
-  // Always fetch all positions for the account (server-side symbol filter is unreliable)
-  const result = (await client.post("/admin/positions/query", { A: params.accountId })) as {
-    positions: Array<{ id: number; s: string; S: string; q: number }>;
-  };
-
-  let positions = result.positions || [];
+  // Scope with accountFilter (a bare { A } body is silently ignored server-side and would
+  // return EVERY account's positions); the symbol filter stays client-side.
+  // Ownership belt-and-braces: this loop fires a closing MARKET order per row, so never act
+  // on a record that does not belong to the requested account, whatever the server returned.
+  let positions = ownedBy(
+    await queryPositions(client, { accountFilter: { accounts: [params.accountId] } }),
+    params.accountId,
+    "open positions",
+  );
 
   // Client-side symbol filter
   if (params.symbol) {
@@ -370,19 +457,22 @@ export const closeBySchema = z.object({
 });
 
 export async function closeBy(client: RestClient, params: z.infer<typeof closeBySchema>) {
-  // Get position details to determine symbol and quantity
+  // Get position details to determine symbol and quantity. accountFilter scoping plus an
+  // ownership check on BOTH legs — a bare { A } body is ignored server-side, and a close-by
+  // must never pair a position with another account's record.
   const result = (await client.post("/admin/positions/query", {
-    A: params.accountId,
-  })) as { positions: Array<{ id: number; s: string; S: string; q: number }> };
+    accountFilter: { accounts: [params.accountId] },
+  })) as { positions: Array<{ id: number; A: number; s: string; S: string; q: number }> };
 
-  const position = (result.positions || []).find((p) => p.id === params.positionId);
+  const owned = (result.positions || []).filter((p) => p.A === params.accountId);
+  const position = owned.find((p) => p.id === params.positionId);
   if (!position) {
-    throw new Error(`Position ${params.positionId} not found`);
+    throw new Error(`Position ${params.positionId} not found on account ${params.accountId}`);
   }
 
-  const byPosition = (result.positions || []).find((p) => p.id === params.positionById);
+  const byPosition = owned.find((p) => p.id === params.positionById);
   if (!byPosition) {
-    throw new Error(`Position ${params.positionById} not found`);
+    throw new Error(`Position ${params.positionById} not found on account ${params.accountId}`);
   }
 
   if (position.s !== byPosition.s) {
@@ -567,6 +657,62 @@ export async function closeByCommit(
   return closeBy(client, closeBySchema.parse(takeCommit(params.commitToken, "close_by")));
 }
 
+export const cancelAllOrdersPlanSchema = z.object({
+  accountId: z.number().optional().describe("Trading account ID"),
+  symbol: z.string().optional().describe("Only cancel orders for this symbol"),
+});
+const CANCEL_ALL_DISCLOSURE =
+  "You are confirming that an AI assistant will CANCEL ALL working orders on a client account (optionally filtered by symbol). This is high-impact — review the list carefully. Call cancel_all_orders_commit with this commitToken to execute. Nothing is sent until you commit.";
+
+export async function cancelAllOrdersPlan(
+  client: RestClient,
+  params: z.infer<typeof cancelAllOrdersPlanSchema>,
+) {
+  const need = completenessMessage("cancel_all_orders_plan", params, [
+    { name: "accountId", label: "account ID" },
+  ]);
+  if (need) return { needMoreInfo: need };
+
+  const accountId = params.accountId as number;
+  let orders = ownedBy(
+    await queryOrders(client, { accountFilter: { accounts: [accountId] } }),
+    accountId,
+    "working orders",
+  );
+  if (params.symbol) orders = orders.filter((o) => o.s === params.symbol);
+
+  if (orders.length === 0) {
+    return {
+      accountId,
+      willCancel: 0,
+      message: "No working orders found — nothing to cancel.",
+    };
+  }
+
+  return {
+    accountId,
+    symbol: params.symbol,
+    willCancel: orders.length,
+    orders: orders.map((o) => ({ orderId: o.id, symbol: o.s, status: o.st })),
+    commitToken: issuePlan(params, "cancel_all_orders"),
+    disclosure: CANCEL_ALL_DISCLOSURE,
+  };
+}
+
+export const cancelAllOrdersCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by cancel_all_orders_plan"),
+});
+
+export async function cancelAllOrdersCommit(
+  client: RestClient,
+  params: z.infer<typeof cancelAllOrdersCommitSchema>,
+) {
+  return cancelAllOrders(
+    client,
+    cancelAllOrdersSchema.parse(takeCommit(params.commitToken, "cancel_all_orders")),
+  );
+}
+
 export const closeAllPositionsPlanSchema = z.object({
   accountId: z.number().optional().describe("Trading account ID"),
   symbol: z.string().optional().describe("Only close positions for this symbol"),
@@ -636,11 +782,365 @@ export async function getAccountSummary(
   client: RestClient,
   params: z.infer<typeof getAccountSummarySchema>,
 ) {
-  const [state, positions, orders] = await Promise.all([
-    client.post("/admin/accounts/states/query", { A: [params.accountId] }),
-    client.post("/admin/positions/query", { A: params.accountId }),
-    client.post("/admin/orders/active", { A: params.accountId }),
+  // A summary of "account X" must not carry another account's rows, and must not stop at page 1:
+  // either would be read back as this account's complete book.
+  const filter = { accountFilter: { accounts: [params.accountId] } };
+  const [states, positions, orders] = await Promise.all([
+    queryAllPages(client, {
+      path: "/admin/accounts/states/query",
+      method: "POST",
+      body: filter,
+      collectionKey: "accountStates",
+    }),
+    queryPositions(client, filter),
+    queryOrders(client, filter),
   ]);
 
-  return { state, positions, orders };
+  return {
+    state: { accountStates: ownedBy(states, params.accountId, "account states") },
+    positions: { positions: ownedBy(positions, params.accountId, "open positions") },
+    orders: { orders: ownedBy(orders, params.accountId, "working orders") },
+  };
+}
+
+export const getWorkingOrderSchema = z.object({
+  orderId: z.number().describe("Order unique identifier"),
+});
+
+export async function getWorkingOrder(
+  client: RestClient,
+  params: z.infer<typeof getWorkingOrderSchema>,
+) {
+  return client.post("/admin/orders/active/single", { orderId: params.orderId });
+}
+
+export const getHistoricalOrderSchema = z.object({
+  orderId: z.number().describe("Order unique identifier"),
+});
+
+export async function getHistoricalOrder(
+  client: RestClient,
+  params: z.infer<typeof getHistoricalOrderSchema>,
+) {
+  return client.post("/admin/orders/history/single", { orderId: params.orderId });
+}
+
+// === POSITION / TRADE RECORD MAINTENANCE (plan/commit) ===
+//
+// Unlike the config resources, these endpoints take a SPARSE update — { id, A, ...changed fields }
+// — and carry no `version`/If-Match concurrency (PositionModify / TradeUpdate in the admin SDK).
+// The account id `A` is required by the wire format but is read from the record, so callers only
+// supply the position/trade id. Editing or deleting a record rewrites a client's book and P/L, so
+// both are gated behind the repo's confirm-before-execute plan/commit pattern.
+
+type BookRecord = Record<string, unknown>;
+
+const positionSpec = (id: number, accountId?: number) => ({
+  label: "position",
+  getPath: `/admin/positions/get/${id}`,
+  queryPath: "/admin/positions/query",
+  queryBody: accountId === undefined ? {} : { accountFilter: { accounts: [accountId] } },
+  collectionKey: "positions",
+  accountId,
+});
+const tradeSpec = (id: number, accountId?: number) => ({
+  label: "trade",
+  getPath: `/admin/trades/get/${id}`,
+  queryPath: "/admin/trades/query",
+  queryBody: accountId === undefined ? {} : { accountFilter: { accounts: [accountId] } },
+  collectionKey: "trades",
+  accountId,
+});
+
+// friendly parameter name -> terse wire key
+const POSITION_FIELD_MAP: Record<string, string> = {
+  quantity: "q",
+  openPrice: "p",
+  swaps: "sw",
+  commission: "c",
+  fees: "f",
+};
+const TRADE_FIELD_MAP: Record<string, string> = {
+  price: "p",
+  quantity: "q",
+  profit: "pl",
+  swaps: "sw",
+  commission: "c",
+  fees: "f",
+};
+
+function buildSparseUpdate(
+  current: BookRecord,
+  updates: Record<string, unknown>,
+  map: Record<string, string>,
+) {
+  const body: BookRecord = { id: current.id, A: current.A };
+  const changes: Record<string, { from: unknown; to: unknown }> = {};
+  for (const [friendly, wire] of Object.entries(map)) {
+    const value = updates[friendly];
+    if (value === undefined) continue;
+    body[wire] = value;
+    if (current[wire] !== value) changes[friendly] = { from: current[wire], to: value };
+  }
+  return { body, changes };
+}
+
+export const getPositionSchema = z.object({
+  positionId: z.number().describe("Position unique identifier (from get_open_positions)"),
+  accountId: z
+    .number()
+    .optional()
+    .describe(
+      "Owning account ID — narrows the lookup and is required on servers that do not serve get-by-id",
+    ),
+});
+
+export async function getPosition(client: RestClient, params: z.infer<typeof getPositionSchema>) {
+  return fetchRecord(client, positionSpec(params.positionId, params.accountId), params.positionId);
+}
+
+export const getTradeSchema = z.object({
+  tradeId: z.number().describe("Trade unique identifier (from get_trade_history)"),
+  accountId: z
+    .number()
+    .optional()
+    .describe(
+      "Owning account ID — narrows the lookup and is required on servers that do not serve get-by-id",
+    ),
+});
+
+export async function getTrade(client: RestClient, params: z.infer<typeof getTradeSchema>) {
+  return fetchRecord(client, tradeSpec(params.tradeId, params.accountId), params.tradeId);
+}
+
+export const updatePositionPlanSchema = z.object({
+  positionId: z.number().describe("Position to correct (from get_open_positions)"),
+  accountId: z
+    .number()
+    .optional()
+    .describe(
+      "Owning account ID — narrows the lookup and is required on servers that do not serve get-by-id",
+    ),
+  quantity: z.number().optional().describe("Volume in lots"),
+  openPrice: z.number().optional().describe("Volume-weighted average open price (VWAP)"),
+  swaps: z.number().optional().describe("Accrued swaps"),
+  commission: z.number().optional().describe("Commission"),
+  fees: z.number().optional().describe("Fees"),
+});
+const UPDATE_POSITION_DISCLOSURE =
+  "You are confirming a LIVE correction to an open position on a client account via an AI assistant. This changes the client's book and P/L. Review the diff, then call update_position_commit with this commitToken. Nothing is written until you commit.";
+
+export async function updatePositionPlan(
+  client: RestClient,
+  params: z.infer<typeof updatePositionPlanSchema>,
+) {
+  const current = await fetchRecord(
+    client,
+    positionSpec(params.positionId, params.accountId),
+    params.positionId,
+  );
+  const { body, changes } = buildSparseUpdate(current, params, POSITION_FIELD_MAP);
+  if (Object.keys(changes).length === 0) {
+    return {
+      positionId: params.positionId,
+      noChanges: true,
+      message: "No field was supplied with a value different from the position's current one.",
+    };
+  }
+  return {
+    positionId: params.positionId,
+    account: current.A,
+    symbol: current.s,
+    changes,
+    commitToken: issuePlan(body, "update_position"),
+    disclosure: UPDATE_POSITION_DISCLOSURE,
+  };
+}
+
+export const updatePositionCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by update_position_plan"),
+});
+
+export async function updatePositionCommit(
+  client: RestClient,
+  params: z.infer<typeof updatePositionCommitSchema>,
+) {
+  // This endpoint carries no ETag contract; clear anything a previous response left cached on
+  // this path so RestClient does not attach a stray If-Match.
+  client.setEtag("/admin/positions/edit", "");
+  return client.post(
+    "/admin/positions/edit",
+    takeCommit(params.commitToken, "update_position"),
+    NO_TRANSPORT_RETRY,
+  );
+}
+
+export const deletePositionPlanSchema = z.object({
+  positionId: z.number().describe("Position to delete (from get_open_positions)"),
+  accountId: z
+    .number()
+    .optional()
+    .describe(
+      "Owning account ID — narrows the lookup and is required on servers that do not serve get-by-id",
+    ),
+});
+const DELETE_POSITION_DISCLOSURE =
+  "You are confirming the LIVE DELETION of an open position from a client account via an AI assistant. The position is removed from the client's book. Review the target, then call delete_position_commit with this commitToken. Nothing is deleted until you commit.";
+
+export async function deletePositionPlan(
+  client: RestClient,
+  params: z.infer<typeof deletePositionPlanSchema>,
+) {
+  const current = await fetchRecord(
+    client,
+    positionSpec(params.positionId, params.accountId),
+    params.positionId,
+  );
+  return {
+    willDelete: {
+      positionId: current.id,
+      account: current.A,
+      symbol: current.s,
+      side: current.S,
+      quantity: current.q,
+      openPrice: current.p,
+      unrealizedPl: current.pl,
+    },
+    commitToken: issuePlan({ id: current.id, A: current.A }, "delete_position"),
+    disclosure: DELETE_POSITION_DISCLOSURE,
+  };
+}
+
+export const deletePositionCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by delete_position_plan"),
+});
+
+export async function deletePositionCommit(
+  client: RestClient,
+  params: z.infer<typeof deletePositionCommitSchema>,
+) {
+  // This endpoint carries no ETag contract; clear anything a previous response left cached on
+  // this path so RestClient does not attach a stray If-Match.
+  client.setEtag("/admin/positions/delete", "");
+  return client.post(
+    "/admin/positions/delete",
+    takeCommit(params.commitToken, "delete_position"),
+    NO_TRANSPORT_RETRY,
+  );
+}
+
+export const updateTradePlanSchema = z.object({
+  tradeId: z.number().describe("Trade to correct (from get_trade_history)"),
+  accountId: z
+    .number()
+    .optional()
+    .describe(
+      "Owning account ID — narrows the lookup and is required on servers that do not serve get-by-id",
+    ),
+  price: z.number().optional().describe("Execution price"),
+  quantity: z.number().optional().describe("Volume in lots"),
+  profit: z.number().optional().describe("Realized profit/loss"),
+  swaps: z.number().optional().describe("Swaps"),
+  commission: z.number().optional().describe("Commission"),
+  fees: z.number().optional().describe("Fees"),
+});
+const UPDATE_TRADE_DISCLOSURE =
+  "You are confirming a LIVE correction to an executed trade on a client account via an AI assistant. This rewrites trade history and the client's realized P/L. Review the diff, then call update_trade_commit with this commitToken. Nothing is written until you commit.";
+
+export async function updateTradePlan(
+  client: RestClient,
+  params: z.infer<typeof updateTradePlanSchema>,
+) {
+  const current = await fetchRecord(
+    client,
+    tradeSpec(params.tradeId, params.accountId),
+    params.tradeId,
+  );
+  const { body, changes } = buildSparseUpdate(current, params, TRADE_FIELD_MAP);
+  if (Object.keys(changes).length === 0) {
+    return {
+      tradeId: params.tradeId,
+      noChanges: true,
+      message: "No field was supplied with a value different from the trade's current one.",
+    };
+  }
+  return {
+    tradeId: params.tradeId,
+    account: current.A,
+    symbol: current.s,
+    changes,
+    commitToken: issuePlan(body, "update_trade"),
+    disclosure: UPDATE_TRADE_DISCLOSURE,
+  };
+}
+
+export const updateTradeCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by update_trade_plan"),
+});
+
+export async function updateTradeCommit(
+  client: RestClient,
+  params: z.infer<typeof updateTradeCommitSchema>,
+) {
+  // This endpoint carries no ETag contract; clear anything a previous response left cached on
+  // this path so RestClient does not attach a stray If-Match.
+  client.setEtag("/admin/trades/edit", "");
+  return client.post(
+    "/admin/trades/edit",
+    takeCommit(params.commitToken, "update_trade"),
+    NO_TRANSPORT_RETRY,
+  );
+}
+
+export const deleteTradePlanSchema = z.object({
+  tradeId: z.number().describe("Trade to delete (from get_trade_history)"),
+  accountId: z
+    .number()
+    .optional()
+    .describe(
+      "Owning account ID — narrows the lookup and is required on servers that do not serve get-by-id",
+    ),
+});
+const DELETE_TRADE_DISCLOSURE =
+  "You are confirming the LIVE DELETION of an executed trade from a client account via an AI assistant. This rewrites trade history. Review the target, then call delete_trade_commit with this commitToken. Nothing is deleted until you commit.";
+
+export async function deleteTradePlan(
+  client: RestClient,
+  params: z.infer<typeof deleteTradePlanSchema>,
+) {
+  const current = await fetchRecord(
+    client,
+    tradeSpec(params.tradeId, params.accountId),
+    params.tradeId,
+  );
+  return {
+    willDelete: {
+      tradeId: current.id,
+      account: current.A,
+      symbol: current.s,
+      quantity: current.q,
+      price: current.p,
+      profit: current.pl,
+    },
+    commitToken: issuePlan({ id: current.id, A: current.A }, "delete_trade"),
+    disclosure: DELETE_TRADE_DISCLOSURE,
+  };
+}
+
+export const deleteTradeCommitSchema = z.object({
+  commitToken: z.string().describe("The commitToken returned by delete_trade_plan"),
+});
+
+export async function deleteTradeCommit(
+  client: RestClient,
+  params: z.infer<typeof deleteTradeCommitSchema>,
+) {
+  // This endpoint carries no ETag contract; clear anything a previous response left cached on
+  // this path so RestClient does not attach a stray If-Match.
+  client.setEtag("/admin/trades/delete", "");
+  return client.post(
+    "/admin/trades/delete",
+    takeCommit(params.commitToken, "delete_trade"),
+    NO_TRANSPORT_RETRY,
+  );
 }

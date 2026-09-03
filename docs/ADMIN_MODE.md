@@ -2,8 +2,8 @@
 
 Admin mode is for the people who **run** the Trade Server: brokers and their operations teams.
 Where a trader sees one account, admin mode sees the whole server — every account, every
-group, every routing rule, every liquidity connector. It exposes **43 tools and 4 MCP
-resources** (see the [Tools Reference](./TOOLS_REFERENCE.md#admin-mode-43-tools) for every
+group, every routing rule, every liquidity connector. It exposes **132 tools and 4 MCP
+resources** (see the [Tools Reference](./TOOLS_REFERENCE.md#admin-mode-132-tools) for every
 parameter and example).
 
 What that means in practice:
@@ -34,7 +34,9 @@ Full setup, including copy-paste config for Claude Desktop and Claude Code, is i
 
 ## Admin-only tools
 
-Fourteen tools exist only in admin mode. When to reach for each:
+**104 of the 132 admin tools have no client-mode counterpart** — the full set is in the
+[Tools Reference](./TOOLS_REFERENCE.md#admin-mode-132-tools). The longest-standing ones, and
+when to reach for each:
 
 | Tool | Use it when... |
 |---|---|
@@ -46,15 +48,15 @@ Fourteen tools exist only in admin mode. When to reach for each:
 | `get_group` | You are reviewing one group's margin settings, commission rules, or symbol overrides. |
 | `get_clients` | You need the list of clients (account owners — each can own multiple accounts). |
 | `get_order_routing` | You are reviewing the current routing rules — always the first step before any routing change. |
-| `add_routing_rule` | You want to add one routing rule without touching the others (the safe default). |
-| `remove_routing_rule` | You want to delete one routing rule by its index (the safe default). |
-| `set_order_routing` | You intend to replace the **entire** routing table at once — use deliberately. |
+| `add_routing_rule_plan` / `_commit` | You want to add one routing rule without touching the others (the safe default). |
+| `remove_routing_rule_plan` / `_commit` | You want to delete one routing rule by its index (the safe default). |
+| `set_order_routing_plan` / `_commit` | You intend to replace the **entire** routing table at once — use deliberately. |
 | `get_liquidity_connectors` | You are checking which LP connectors exist and whether they are connected. |
 | `get_indicator` | You want a technical indicator (RSI, MACD, EMA, ...) computed over a symbol's candles. |
 | `force_delete_order` | **Last resort only:** a stuck or corrupted order survives `cancel_order`. This bypasses the normal order lifecycle. |
 
-(Conversely, one tool is client-only: `get_limits`. Everything else exists in both modes —
-with the scope and parameter differences listed in
+(Conversely, one tool is client-only: `get_limits`. The 29 tools whose names exist in both
+modes differ in scope and parameters as listed in
 [Cross-mode differences](./TOOLS_REFERENCE.md#cross-mode-differences).)
 
 ## Managing order routing
@@ -64,11 +66,11 @@ The routing tools are designed around a **read → small change** workflow:
 1. **`get_order_routing`** first, always. It returns every rule (actions + filters) **and the
    current version number** of the routing configuration.
 2. For a single change, prefer the atomic tools:
-   - **`add_routing_rule`** appends one rule. It reads the current version itself and leaves
+   - **`add_routing_rule_plan`** previews appending one rule; the commit applies it. It reads the current version itself and leaves
      all existing rules untouched.
-   - **`remove_routing_rule`** deletes one rule by its zero-based index (as shown by
+   - **`remove_routing_rule_plan`** previews deleting one rule by its zero-based index (as shown by
      `get_order_routing`) and reports what was removed.
-3. **`set_order_routing`** replaces the **whole table** in one shot and requires you to pass
+3. **`set_order_routing_plan`** previews replacing the **whole table** in one shot and requires you to pass
    the version number you got from `get_order_routing`. If the configuration changed since
    you read it, the version no longer matches and the edit is rejected — re-read and retry.
    Use this only when you genuinely mean to rewrite everything; for everyday changes the
@@ -131,7 +133,7 @@ Review past movements with `get_transfer_history`.
 
 ## Where next
 
-- [Tools Reference](./TOOLS_REFERENCE.md) — all 43 admin tools with parameters and examples
+- [Tools Reference](./TOOLS_REFERENCE.md) — all 132 admin tools with parameters and examples
 - [Configuration](./CONFIGURATION.md) — admin credential setup
 - [Authentication](./AUTHENTICATION.md) — request signing with the admin key pair
 - [Security](./SECURITY.md) — key-handling guarantees and recommendations

@@ -248,3 +248,57 @@ test("refresh timer fires and falls back to authorize on refresh failure", async
 
   auth.stop();
 });
+
+test("a failed refresh+authorize re-arms a backoff retry instead of giving up forever", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+
+  let n = 0;
+  globalThis.fetch = (async (url: any, init: any) => {
+    captured.push({ url: String(url), body: init?.body ?? "", headers: init?.headers ?? {} });
+    n++;
+    if (n === 1) {
+      // initial authorize: short 10s lifetime so the renewal fires quickly
+      return new Response(
+        JSON.stringify({
+          account: 1,
+          token: "tok1",
+          signingToken: "sig1",
+          expiration: (Date.now() + 10_000) * 1000,
+        }),
+        { status: 200 },
+      );
+    }
+    if (n === 2 || n === 3) return new Response("server error", { status: 500 }); // refresh + fallback authorize both fail
+    // retry cycle: refresh succeeds and the session recovers
+    return new Response(
+      JSON.stringify({
+        account: 1,
+        token: "tok4",
+        signingToken: "sig4",
+        expiration: (Date.now() + 3600_000) * 1000,
+      }),
+      { status: 200 },
+    );
+  }) as any;
+
+  const drain = async () => {
+    for (let i = 0; i < 20; i++) await new Promise<void>((r) => setImmediate(r));
+  };
+
+  const auth = new ClientAuth("http://ts.local", { login: 1, password: "pw" });
+  await auth.authorize();
+
+  // delay = max(10_000 * 0.8, 5_000) = 8_000ms — fire the scheduled renewal
+  t.mock.timers.tick(8_001);
+  await drain();
+  assert.equal(captured.length, 3, "refresh + fallback authorize both attempted");
+  assert.equal(auth.getApiKey(), "tok1", "token unchanged while both attempts failed");
+
+  // The old code stopped here (session dead forever). Now a backoff retry (RETRY_MIN=30s) is armed.
+  t.mock.timers.tick(30_000);
+  await drain();
+  assert.equal(captured.length, 4, "retry cycle ran instead of giving up");
+  assert.equal(auth.getApiKey(), "tok4", "session recovered on retry");
+
+  auth.stop();
+});

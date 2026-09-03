@@ -3,11 +3,14 @@
 The complete reference for every tool the Trade Server MCP exposes, in both modes:
 
 - **[Client mode](#client-mode-30-tools)** — 30 tools, all scoped to your own trading account.
-- **[Admin mode](#admin-mode-43-tools)** — 43 tools with server-wide scope, for broker
+- **[Admin mode](#admin-mode-132-tools)** — 132 tools with server-wide scope, for broker
   administrators.
 
 For each tool you'll find the description your AI sees (verbatim, as registered with the MCP
-server), a parameter table, and one realistic example call. Tools are grouped by category.
+server), a parameter table, and one realistic example call. Tools are grouped by category;
+the newer tool families (resource CRUD, bulk operations, book and chart maintenance,
+reporting) are documented as summary tables instead — their registered descriptions are
+always visible in your MCP client.
 Each mode also exposes [MCP resources](#resources-client-mode), listed at the end of its
 section. Differences between same-named tools in the two modes are summarized in
 [Cross-mode differences](#cross-mode-differences).
@@ -606,13 +609,13 @@ Client mode registers **1 MCP resource**:
 
 ---
 
-## Admin mode (43 tools)
+## Admin mode (132 tools)
 
 Admin-mode tools have **server-wide scope**: tools that act on an account take an `accountId`
 parameter, and read tools can query across all accounts. See [Admin Mode](./ADMIN_MODE.md) for
 the persona guide.
 
-### Trading (19 tools)
+### Trading
 
 The four money-movers — placing an order, closing a position, a hedged close, and closing
 everything — are **confirm-before-execute**: each is a `*_plan` + `*_commit` pair. The `*_plan`
@@ -854,7 +857,7 @@ Example:
 }
 ```
 
-#### `cancel_all_orders`
+#### `cancel_all_orders_plan` / `cancel_all_orders_commit`
 
 > Cancel all working orders on an account in one call. Optionally filter by symbol to only cancel orders for a specific instrument. Returns count of cancelled orders.
 
@@ -1004,7 +1007,7 @@ Example:
 }
 ```
 
-### Account (7 tools)
+### Account
 
 #### `get_account_state`
 
@@ -1126,7 +1129,7 @@ Example:
 {}
 ```
 
-### Market data (7 tools)
+### Market data
 
 #### `get_quote`
 
@@ -1268,7 +1271,7 @@ Example:
 }
 ```
 
-### Configuration (9 tools)
+### Configuration
 
 #### `get_groups`
 
@@ -1322,9 +1325,9 @@ Example:
 {}
 ```
 
-#### `set_order_routing`
+#### `set_order_routing_plan` / `set_order_routing_commit`
 
-> Replace ALL order routing rules at once. Requires the current version number (get from get_order_routing). CAUTION: this overwrites everything. Prefer add_routing_rule/remove_routing_rule for safe atomic changes.
+> STEP 1 previews REPLACING ALL order routing rules and returns a commitToken; STEP 2 applies it. Requires the current version number (get from get_order_routing). CAUTION: this overwrites everything. Prefer add_routing_rule_plan/remove_routing_rule_plan for safe atomic changes.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1347,9 +1350,9 @@ Example:
 }
 ```
 
-#### `add_routing_rule`
+#### `add_routing_rule_plan` / `add_routing_rule_commit`
 
-> Add a single routing rule to the existing configuration without affecting other rules. Safer than set_order_routing. Automatically reads current version and appends.
+> STEP 1 previews adding a single routing rule to the existing configuration without affecting other rules and returns a commitToken; STEP 2 applies it. Safer than set_order_routing_plan. Automatically reads current version and appends.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1365,9 +1368,9 @@ Example:
 }
 ```
 
-#### `remove_routing_rule`
+#### `remove_routing_rule_plan` / `remove_routing_rule_commit`
 
-> Remove a single routing rule by its zero-based index. Use get_order_routing first to see current rules and their indices. Safer than set_order_routing.
+> STEP 1 previews removing a single routing rule by its zero-based index and returns a commitToken; STEP 2 applies it. Use get_order_routing first to see current rules and their indices. Safer than set_order_routing_plan.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -1406,6 +1409,206 @@ Example:
 ```json
 {
   "symbolId": 42
+}
+```
+
+#### `update_symbol_plan`
+
+> STEP 1 of editing a symbol's server-wide configuration — preview WITHOUT writing. Reads the current symbol (by symbolId from get_symbols), applies your partial changes (any top-level fields via `updates`, and/or full `quoteSessions`/`tradeSessions` replacement lists), and returns a field-by-field diff plus a commitToken. Show the diff; only after the user confirms, call update_symbol_commit. Nothing is written.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `symbolId` | number | Yes | ID of the symbol to modify (from get_symbols) |
+| `updates` | object | No | Partial map of top-level symbol fields to overwrite, using the exact field names get_symbols returns (e.g. `{ "bidMarkup": 5, "maxOrderSize": 50 }`). For sessions use quoteSessions/tradeSessions instead. |
+| `quoteSessions` | array of `{weekDay,start,end}` | No | Full replacement list of quote sessions (repeat a weekday for intraday breaks). Omit to leave unchanged. |
+| `tradeSessions` | array of `{weekDay,start,end}` | No | Full replacement list of trade sessions. Omit to leave unchanged. |
+
+Example:
+
+```json
+{
+  "symbolId": 70,
+  "tradeSessions": [
+    { "weekDay": "Mon", "start": "01:05:00", "end": "23:50:00" },
+    { "weekDay": "Fri", "start": "01:05:00", "end": "23:50:00" }
+  ]
+}
+```
+
+#### `update_symbol_commit`
+
+> STEP 2 — apply the symbol edit previewed by update_symbol_plan. Requires the commitToken from that preview. Writes a LIVE, server-wide change to the symbol via an AI assistant — only call after the user has reviewed the diff and explicitly confirmed.
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `commitToken` | string | Yes | The commitToken returned by update_symbol_plan |
+
+Example:
+
+```json
+{
+  "commitToken": "plan_6eee4ff4-9cdc-4780-9b66-977cb0084b53"
+}
+```
+
+#### Resource CRUD (create / edit / delete) — the shared pattern
+
+All admin config resources below expose **create / edit / delete** through the same
+confirm-before-write **plan → commit** pairs as `update_symbol_*`:
+
+- **`update_<res>_plan`** reads the current object (by id), applies your partial `updates`, and
+  returns a field-by-field diff plus a `commitToken`. **`update_<res>_commit`** applies it via
+  `POST /admin/<res>/edit`, sending the resource's ETag as `If-Match` (optimistic concurrency).
+- **`delete_<res>_plan`** previews the target; **`delete_<res>_commit`** posts
+  `{ <res>Id, version }` to `/admin/<res>/delete` with `If-Match`.
+- **`create_<res>_plan`** builds a new object — clone an existing one as a template via `fromId`
+  (recommended) and/or pass a full `object`, then apply `overrides`; `id`/`version` are forced to
+  `0`. **`create_<res>_commit`** posts it to `/admin/<res>/edit` (no `If-Match`).
+
+Every `*_plan` returns a `commitToken`; every `*_commit` takes only `{ commitToken }`. Nothing is
+written until you commit. Field names in `updates`/`overrides` are exactly those the matching
+`get_*` returns.
+
+| Resource | Read | Create | Edit | Delete |
+|---|---|---|---|---|
+| **Symbols** | `get_symbols`, `get_symbol_details` | `create_symbol_plan/commit` | `update_symbol_plan/commit` | `delete_symbol_plan/commit` |
+| **Groups** | `get_groups`, `get_group` | `create_group_plan/commit` | `update_group_plan/commit` | `delete_group_plan/commit` |
+| **Trading accounts** | `get_all_accounts`, `get_account_info` | `create_account_plan/commit` ¹ | `update_account_plan/commit` | `delete_account_plan/commit` |
+| **Clients** | `get_clients`, `get_client` | `create_client_plan/commit` | `update_client_plan/commit` | `delete_client_plan/commit` |
+| **Liquidity connectors** | `get_liquidity_connectors`, `get_liquidity_connector` | `create_liquidity_connector_plan/commit` | `update_liquidity_connector_plan/commit` | `delete_liquidity_connector_plan/commit` |
+| **Holidays** (trading calendar) | `get_holidays`, `get_holiday` | `create_holiday_plan/commit` | `update_holiday_plan/commit` | `delete_holiday_plan/commit` |
+| **Managers** | `get_managers`, `get_manager`, `get_manager_self` | `create_manager_plan/commit` | `update_manager_plan/commit` | `delete_manager_plan/commit` |
+| **Access tokens** | `get_tokens` | — | — | — |
+
+¹ A new trading account **requires a `password`** in `overrides`/`object` (supplied by you).
+
+**Plan parameters** — edit: `{ <res>Id, updates }`; delete: `{ <res>Id }`; create:
+`{ fromId?, object?, overrides? }`. **Commit parameters** — `{ commitToken }`.
+
+Example — clone `EURUSD` (id 1) into a new `EURGBP`:
+
+```json
+{
+  "fromId": 1,
+  "overrides": { "name": "EURGBP", "path": "Forex/EURGBP", "description": "Euro vs Pound" }
+}
+```
+
+### Bulk (batch) operations
+
+Change or remove **many records in one call** — the common case being "set this field on every
+`EUR*` symbol". One parameterised pair covers every config resource instead of a separate tool per
+kind.
+
+| Tool | What it does |
+|---|---|
+| `bulk_update_plan` / `_commit` | Set the same `updates` on every selected record. |
+| `bulk_delete_plan` / `_commit` | Delete every selected record. |
+| `bulk_update_candles_plan` / `_commit` | Write many bars for one symbol + interval. |
+| `bulk_delete_candles_plan` / `_commit` | Delete many bars for one symbol + interval. |
+
+**Selecting records.** `resource` picks the kind — `symbols`, `groups`, `accounts`, `clients`,
+`holidays`, `managers`, `liquidity` — and then either:
+
+- `ids`: explicit record IDs (for `managers`, account IDs), or
+- `namePattern`: a glob over the record's name — `EUR*`, `Real/*`, `*`. Only resources that have a
+  name support this (`symbols`, `groups`, `holidays`, `liquidity`); the others must use `ids`.
+
+The plan lists every affected record (first 20, with an exact total), and **skips records that
+already hold the requested values** — so re-running a bulk change is a no-op rather than a version
+bump on everything. Batch endpoints carry no `If-Match` (each object carries its own `version`),
+and the commit is never retried on a connection error, so a partly-applied batch cannot silently
+repeat.
+
+Example — a five-point markup on every EUR pair:
+
+```json
+{
+  "resource": "symbols",
+  "namePattern": "EUR*",
+  "updates": { "bidMarkup": 5, "askMarkup": 5 }
+}
+```
+
+> Order, position, trade and transfer batch endpoints are **not** exposed: their bodies are sparse
+> per-record updates (and, for transfers, move money), so they are better served by the single-record
+> tools with an explicit confirmation each.
+
+### Chart history and passwords
+
+| Tool | What it does |
+|---|---|
+| `update_candle_plan` / `_commit` | Rewrite (or add) one stored bar — e.g. to erase a bad-tick spike. Takes `symbolId`, `interval` (`1M`…`D`), `barTime` (bar START, microseconds since epoch) and `open`/`high`/`low`/`close`/`volume`. The plan shows the bar currently stored at that slot. |
+| `delete_candle_plan` / `_commit` | Delete one stored bar, leaving a gap in history. |
+| `set_account_password_plan` / `_commit` | Manager resets **another** trading account's password (written through the account upsert). |
+| `change_my_password_plan` / `_commit` | Changes the password of **the account this MCP signs in as** — `POST /password` takes no account id. |
+
+Passwords are supplied by the user and are **never echoed back**: previews show `(hidden)`.
+
+> **`change_my_password` breaks your configuration.** After committing, the stored `YB_PASSWORD`
+> still holds the old value, so the next sign-in fails until you update it. To reset a *client's*
+> password use `set_account_password_plan` instead.
+
+Editing chart history changes everything derived from it — charts, indicators, and any report that
+reads bars. Both candle writes are confirm-before-execute and are never retried on a connection
+error.
+
+### Position and trade record maintenance
+
+Back-office corrections to a client's book, for fixing bad data — **not** a way to trade. To close a
+position at market use `close_position_plan`; to cancel an order use `cancel_order`.
+
+| Tool | What it does |
+|---|---|
+| `get_position` / `get_trade` | Read ONE position / trade by ID (lists: `get_open_positions`, `get_trade_history`). |
+| `update_position_plan` / `_commit` | Correct an open position's `quantity`, `openPrice`, `swaps`, `commission`, `fees`. |
+| `delete_position_plan` / `_commit` | **Erase** a position from the book (it is not closed — nothing is executed). |
+| `update_trade_plan` / `_commit` | Correct an executed trade's `price`, `quantity`, `profit`, `swaps`, `commission`, `fees`. |
+| `delete_trade_plan` / `_commit` | Erase a trade from history. |
+
+All of these accept an optional `accountId`. The tools read the record from `GET /admin/<res>/get/{id}` when the server serves it and otherwise fall back to the matching `/query` endpoint — `accountId` narrows that fallback and may be required for older records.
+
+Each `*_plan` takes the record ID plus the fields to change and returns a field-by-field diff and a
+`commitToken`; each `*_commit` takes only `{ commitToken }`. Only the fields you supply are sent —
+the request is a sparse update (`{ id, account, …changed }`), so untouched values are never
+rewritten. These endpoints carry no ETag concurrency, and the commit is never retried on a
+connection error (a correction must not be applied twice).
+
+Example — correct the accrued swaps on a position:
+
+```json
+{
+  "positionId": 476797305095829,
+  "swaps": -7.5
+}
+```
+
+### Reporting and lookups (read-only)
+
+Added alongside the CRUD tools; all are plain reads.
+
+| Tool | What it does | Key parameters |
+|---|---|---|
+| `get_journal` | Server audit journal over a time range — who changed what, plus server events. Answers "who modified this symbol and when". | `fromTime`, `toTime` (microseconds since epoch), optional `severities` (`trace`…`critical`), `mask`, `maxResults` |
+| `get_statements` | Daily/monthly account statements for a date, optionally with orders and positions. | `type` (`Daily`/`Monthly`), `date` (`YYYY-MM-DD`), optional `accounts`/`groups`/`groupMasks`, `orders`, `positions` |
+| `get_email_services` | Configured email-service (notification) configurations. | none |
+| `find_client_by_external_id` | Find a client by the external ID your systems assigned. | `clientExternalId` |
+| `get_margin_call_accounts` | Accounts currently in margin call. | optional `accounts`/`groups`/`groupMasks`, `maxResults`, `sortOrder` |
+| `get_transfer` | One cash transfer by ID. | `transferId` |
+| `get_working_order` | ONE pending order by ID (list: `get_working_orders`). | `orderId` |
+| `get_historical_order` | ONE completed/cancelled order by ID (list: `get_order_history`). | `orderId` |
+| `get_conversion_rates_batch` | Several conversion rates in one call (single pair: `get_conversion_rate`). | `rates`: array of `{ groupId, from, to }` |
+
+Account-scoped tools take **one** of `accounts` (IDs), `groups` (IDs) or `groupMasks` (e.g. `["Real/*"]`); the first one supplied wins, and omitting all means server-wide.
+
+Example — audit trail for the last hour, warnings and worse:
+
+```json
+{
+  "fromTime": 1786426492000000,
+  "toTime": 1786430092000000,
+  "severities": ["warning", "error", "critical"],
+  "maxResults": 50
 }
 ```
 
@@ -1481,7 +1684,8 @@ matter in practice:
   (`marginCheck: false`); client orders are always margin-checked by the server.
 
 - **Client-only tool:** `get_limits` (your session's API rate limits) exists only in client
-  mode. The 14 admin-only tools are listed in [Admin Mode](./ADMIN_MODE.md#admin-only-tools).
+  mode. 99 of the 132 admin tools are admin-only; a when-to-use guide for the most common
+  ones is in [Admin Mode](./ADMIN_MODE.md#admin-only-tools).
 
 - **Resources:** client mode exposes 1 resource (`trade://symbols`, scoped to your account);
   admin mode exposes 4 (`trade://symbols`, `trade://groups`, `trade://accounts`,

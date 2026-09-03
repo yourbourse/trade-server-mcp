@@ -34,8 +34,16 @@ export class ClientAuth implements CredentialsProvider {
   private expiration = 0;
   private accountId = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  // Set by stop(). A renewal already in flight cannot be cancelled, so its failure handler
+  // checks this before scheduling anything new — otherwise stop() would leave a retry loop
+  // running against a connection the caller believes is closed.
+  private stopped = false;
   private inflight: Promise<void> | null = null;
   private lastAuthFailure: AuthRequestError | null = null;
+
+  // Backoff bounds for re-arming renewal after a failed cycle (30s → capped at 5m).
+  private static readonly RETRY_MIN_MS = 30_000;
+  private static readonly RETRY_MAX_MS = 300_000;
 
   constructor(
     private baseUrl: string,
@@ -85,7 +93,19 @@ export class ClientAuth implements CredentialsProvider {
     }
   }
 
+  /**
+   * Terminal: cancels the pending timer AND prevents any in-flight attempt from rescheduling.
+   * A stopped instance stays stopped — the renewal path itself calls authorize(), so resuming on
+   * sign-in would let a failure that is already in flight restart the loop stop() just ended.
+   * Callers that need a live session again construct a new ClientAuth.
+   */
   stop() {
+    this.stopped = true;
+    this.clearTimer();
+  }
+
+  /** Drop the pending timer without ending renewal (used between normal refresh cycles). */
+  private clearTimer() {
     if (this.timer) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -139,19 +159,36 @@ export class ClientAuth implements CredentialsProvider {
   }
 
   private scheduleRefresh() {
-    this.stop();
+    this.clearTimer();
     const msLeft = this.expiration / 1000 - Date.now();
     const delay = Math.min(Math.max(msLeft * 0.8, 5_000), 2 ** 31 - 1);
+    this.armRenew(delay, ClientAuth.RETRY_MIN_MS);
+  }
+
+  /**
+   * Arm the renewal timer. When it fires, rotate the session (refresh, falling back to a full
+   * authorize). A SUCCESS re-arms the normal 80%-of-lifetime cycle via store(). A TOTAL failure
+   * re-arms THIS timer with exponential backoff (capped) instead of giving up — previously a
+   * single transient failure at refresh time silently killed the session forever, after which
+   * every request failed (as 502, not 401, on this server) until the process was restarted.
+   */
+  private armRenew(delayMs: number, retryMs: number) {
+    if (this.stopped) return;
     this.timer = setTimeout(() => {
-      this.refresh().catch(() => {
+      if (this.stopped) return;
+      this.refresh().catch(() =>
         this.authorize().catch((err) => {
           console.error(
-            "Trade Server MCP: re-authorization failed:",
-            err instanceof Error ? err.message : String(err),
+            `Trade Server MCP: re-authorization failed: ${
+              err instanceof Error ? err.message : String(err)
+            } — retrying in ${Math.round(retryMs / 1000)}s`,
           );
-        });
-      });
-    }, delay);
+          if (this.stopped) return; // stop() was called while this attempt was in flight
+          this.clearTimer();
+          this.armRenew(retryMs, Math.min(retryMs * 2, ClientAuth.RETRY_MAX_MS));
+        }),
+      );
+    }, delayMs);
     if (typeof (this.timer as any).unref === "function") (this.timer as any).unref();
   }
 
