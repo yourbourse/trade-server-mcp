@@ -30,7 +30,7 @@
     "pack:mcpb": "node scripts/pack-mcpb.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/sdk": "^1.31.0",
     "technicalindicators": "^3.1.0",
     "ws": "^8.18.0",
     "zod": "^3.24.0"
